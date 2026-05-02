@@ -136,7 +136,7 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
   <div class="hdr">
     <div class="hdr-left">
       <h1 id="nama-sekolah">Monitor Kelas</h1>
-      <p><span class="live-dot"></span> Live · Auto-refresh setiap menit</p>
+      <p><span class="live-dot"></span> Live · Auto-refresh setiap 30 detik</p>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
       <!-- Badge status bel — di kiri jam -->
@@ -293,11 +293,20 @@ function sortKelas(a,b){const T={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,
 
 function tickClock(){
   const d=new Date();
-  document.getElementById('clk').textContent=d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('tgl').textContent=d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('hari-label').textContent=hariIni();
+  const clk=document.getElementById('clk');
+  const tgl=document.getElementById('tgl');
+  const hl=document.getElementById('hari-label');
+  if(clk) clk.textContent=d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  if(tgl) tgl.textContent=d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  if(hl) hl.textContent=hariIni();
 }
-setInterval(tickClock,1000); tickClock();
+setInterval(tickClock,1000);
+// Jalankan setelah DOM siap
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', tickClock);
+} else {
+  tickClock();
+}
 
 async function loadData(){
   try{
@@ -477,34 +486,43 @@ function renderGrid(){
 
       const ditangani=dPenanganan.find(p=>p.kelas===kl&&p.tanggal===tgl&&p.jamMulai===si.s&&p.status!=='BATAL');
 
-      let cls='a', note='';
+      let cls='a', ketLabel='', piketMark='';
       if(stSesi==='akan'||stSesi==='toleransi'){
-        if(kcData){cls='kc';cntKC++;note='<div class="cj">⚡ Keluar Cepat</div>';}
+        if(kcData) cls='kc';
         else cls='b';
       }
       else if(stSesi==='berlangsung'){
-        if(guruLamaHijau){cls='k';cntK++;}
-        else if(kcData){cls='kc';cntKC++;note='<div class="cj">⚡ Keluar Cepat</div>';}
-        else if(absMasuk){cls='h';cntH++;}
+        if(guruLamaHijau) cls='k';
+        else if(kcData) cls='kc';
+        else if(absMasuk) cls='h';
         else if(ditangani){
           cls='mh';cntMH++;
-          const ket=ditangani.keterangan||'Tanpa Ket.';
-          const ketLabel=ket==='Tanpa Keterangan'?'Tanpa Ket.':ket;
-          note=`<div class="cj" style="background:rgba(0,0,0,0.2);padding:1px 5px;border-radius:8px;color:#bfdbfe;margin-bottom:2px;">${ketLabel}</div>`;
-          note+=`<div class="handle-mark">✓${ditangani.guruPiket}</div>`;
+          const ket=ditangani.keterangan||'';
+          ketLabel=ket==='Tanpa Keterangan'?'Tanpa Ket.':ket;
+          piketMark=ditangani.guruPiket;
         }
-        else{cls='m';cntM++;}
+        else cls='m';
       } else {
-        if(kcData){cls='kc';cntKC++;note='<div class="cj">⚡ Keluar Cepat</div>';}
-        else if(absMasuk&&!absKeluar){cls='h';cntH++;note='<div class="cj">▶ di kelas</div>';}
+        if(kcData) cls='kc';
+        else if(absMasuk&&!absKeluar) cls='h';
         else cls='a';
       }
 
-      html+=`<td><div class="cell ${cls}" style="position:relative;">
-        ${note.includes('background') ? note.split('<div class="handle-mark">')[0] : ''}
-        <div class="cn">${j.kodeTampil||j.inisial}</div>
-        ${note.includes('handle-mark') ? '<div class="handle-mark">✓'+ditangani.guruPiket+'</div>' : (!note.includes('background') ? note : '')}
-      </div></td>`;
+      // Hitung counter
+      if(cls==='h') cntH++;
+      else if(cls==='m') cntM++;
+      else if(cls==='k') cntK++;
+      else if(cls==='kc') cntKC++;
+
+      // Bangun isi sel
+      let isi='';
+      if(ketLabel) isi+=`<div class="cj" style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:8px;color:#bfdbfe;margin-bottom:2px;">${ketLabel}</div>`;
+      isi+=`<div class="cn">${j.kodeTampil||j.inisial}</div>`;
+      if(cls==='kc') isi+=`<div class="cj">⚡ Keluar Cepat</div>`;
+      if(cls==='h'&&absMasuk&&!absKeluar&&stSesi==='selesai') isi+=`<div class="cj">▶ di kelas</div>`;
+      if(piketMark) isi+=`<div class="handle-mark">✓${piketMark}</div>`;
+
+      html+=`<td><div class="cell ${cls}" style="position:relative;">${isi}</div></td>`;
     });
     html+='</tr>';
   });
@@ -520,8 +538,8 @@ function renderGrid(){
 }
 
 loadData();
-setInterval(loadData, 60000);
-setInterval(cekBelOtomatis, 30000); // cek bel tiap 30 detik
+setInterval(loadData, 30000); // refresh tiap 30 detik
+setInterval(cekBelOtomatis, 15000); // cek bel tiap 15 detik
 </script>
 </body>
 </html>
