@@ -9,21 +9,26 @@
 function aktifkanAudio(){
   var el=document.getElementById('bel-overlay');
   if(el) el.style.display='none';
-  if(window.audioUnlocked) return;
   window.audioUnlocked=true;
   window.belOtomatis=true;
   sessionStorage.setItem('bel_unlocked','1');
+  // Buat AudioContext SEKARANG — setelah user gesture (klik tombol Mulai)
   try{
-    var ctx=new(window.AudioContext||window.webkitAudioContext)();
-    ctx.resume(); window.audioCtx=ctx;
-  }catch(e){}
+    window.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    window.audioCtx.resume();
+    // Play silent buffer untuk benar-benar unlock
+    var buf=window.audioCtx.createBuffer(1,1,22050);
+    var src=window.audioCtx.createBufferSource();
+    src.buffer=buf; src.connect(window.audioCtx.destination); src.start(0);
+  }catch(e){ console.log('AudioContext error:',e); }
   var badge=document.getElementById('bel-badge');
   if(badge){badge.textContent='🔔 Bel ON';badge.className='bel-status-badge on';}
   if(window.CFG){
-    fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(function(){});
+    fetch(CFG.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(function(){});
   }
-  console.log('[BEL] ✅ Aktif!');
+  console.log('[BEL] ✅ Aktif! AudioContext state:',window.audioCtx?window.audioCtx.state:'null');
 }
+// Inisialisasi variabel global — AudioContext JANGAN dibuat di sini
 window.audioUnlocked=false;
 window.belOtomatis=true;
 window.audioCtx=null;
@@ -211,25 +216,22 @@ let audioCtx = null;
 // Variabel sudah didefinisikan di <head>
 // audioUnlocked, belOtomatis, audioCtx
 
-// Cek apakah sudah pernah unlock di sesi ini
 function cekAudioUnlock(){
   if(sessionStorage.getItem('bel_unlocked')==='1'){
-    audioUnlocked = true;
-    document.getElementById('bel-overlay').style.display = 'none';
-    try{
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }catch(e){}
-    console.log('[BEL] ✅ Audio sudah unlock dari sesi sebelumnya');
+    // Sudah pernah unlock di sesi ini — tapi tetap perlu gesture baru
+    // Jadi tampilkan overlay lagi agar user klik sekali
+    // (sessionStorage reset saat tab baru, ini sudah unlock di sesi ini)
+    audioUnlocked=true;
+    document.getElementById('bel-overlay').style.display='none';
+    console.log('[BEL] Sesi lanjut — tapi AudioContext belum dibuat');
+    // AudioContext akan dibuat saat bunyikanBel pertama kali dipanggil
   }
 }
 
-// Aktifkan dengan keyboard juga
-document.addEventListener('keydown', e=>{
+document.addEventListener('keydown',e=>{
   if(e.keyCode===13||e.keyCode===32||e.keyCode===179) aktifkanAudio();
 });
-
-// Cek sesi sebelumnya saat halaman load
-window.onload = ()=>{ cekAudioUnlock(); };
+window.onload=()=>{ cekAudioUnlock(); };
 
 function toggleBelOtomatis(){
   belOtomatis = !belOtomatis;
@@ -242,34 +244,43 @@ function toggleBelOtomatis(){
 
 function bunyikanBel(namaFile){
   if(!audioUnlocked){
-    console.log('[BEL] Belum unlock — tampilkan overlay');
+    console.log('[BEL] Belum unlock');
     document.getElementById('bel-overlay').style.display='flex';
-    document.getElementById('bel-overlay').focus();
     return;
   }
+  // Kalau AudioContext belum ada (misal dari sessionStorage) — buat dulu
+  if(!audioCtx){
+    try{
+      audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    }catch(e){ console.log('[BEL] Gagal buat AudioContext:',e); }
+  }
   try{
-    // Pastikan AudioContext aktif
-    if(audioCtx && audioCtx.state === 'suspended'){
-      audioCtx.resume().then(()=> playAudio(namaFile));
+    if(audioCtx && audioCtx.state==='suspended'){
+      audioCtx.resume().then(()=>playAudio(namaFile));
     } else {
       playAudio(namaFile);
     }
-  }catch(e){ console.log('[BEL] Error:', e); }
+  }catch(e){ console.log('[BEL] Error:',e); }
 }
 
 function playAudio(namaFile){
-  const audio = new Audio('https://ipalmiansyah.github.io/Monitor/' + namaFile);
-  audio.volume = 1.0;
-  audio.play().then(()=>{
-    console.log('[BEL] ✅ Berbunyi:', namaFile);
-  }).catch(e=>{
-    console.log('[BEL] Play gagal:', e.message);
-    if(e.name === 'NotAllowedError'){
-      audioUnlocked = false;
-      sessionStorage.removeItem('bel_unlocked');
-      document.getElementById('bel-overlay').style.display='flex';
+  try{
+    const audio=new Audio('https://ipalmiansyah.github.io/Monitor/'+namaFile);
+    audio.volume=1.0;
+    const playPromise=audio.play();
+    if(playPromise){
+      playPromise.then(()=>{
+        console.log('[BEL] ✅ Bunyi:',namaFile);
+      }).catch(e=>{
+        console.log('[BEL] Play gagal:',e.name,e.message);
+        if(e.name==='NotAllowedError'){
+          audioUnlocked=false;
+          sessionStorage.removeItem('bel_unlocked');
+          document.getElementById('bel-overlay').style.display='flex';
+        }
+      });
     }
-  });
+  }catch(e){ console.log('[BEL] Audio error:',e); }
 }
 
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
