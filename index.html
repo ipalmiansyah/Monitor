@@ -191,7 +191,11 @@ let audioUnlocked = false;
 let audioCtx = null;
 
 function aktifkanAudio(){
+  // Selalu sembunyikan overlay saat diklik
+  document.getElementById('bel-overlay').style.display = 'none';
+
   if(audioUnlocked) return;
+
   try{
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -201,10 +205,17 @@ function aktifkanAudio(){
     src.connect(audioCtx.destination);
     src.start(0);
   }catch(e){ console.log('AudioContext error:',e); }
+
   audioUnlocked = true;
   sessionStorage.setItem('bel_unlocked','1');
-  document.getElementById('bel-overlay').style.display = 'none';
-  console.log('[BEL] ✅ Audio unlocked!');
+
+  // Set bel otomatis ON di sheet juga (override status OFF)
+  belOtomatis = true;
+  const badge = document.getElementById('bel-badge');
+  if(badge){ badge.textContent='🔔 Bel ON'; badge.className='bel-status-badge on'; }
+  fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(()=>{});
+
+  console.log('[BEL] ✅ Audio unlocked! Bel otomatis ON.');
 }
 
 // Cek apakah sudah pernah unlock di sesi ini
@@ -212,7 +223,6 @@ function cekAudioUnlock(){
   if(sessionStorage.getItem('bel_unlocked')==='1'){
     audioUnlocked = true;
     document.getElementById('bel-overlay').style.display = 'none';
-    // Inisialisasi AudioContext tanpa perlu interaksi (sudah unlock sebelumnya)
     try{
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }catch(e){}
@@ -224,16 +234,11 @@ function cekAudioUnlock(){
 document.addEventListener('DOMContentLoaded', ()=>{
   cekAudioUnlock();
   const overlay = document.getElementById('bel-overlay');
+  // Klik di mana saja pada overlay — termasuk tombol di dalamnya
   overlay.addEventListener('click', aktifkanAudio);
+  // Keyboard & remote TV
   document.addEventListener('keydown', e=>{
-    if(['Enter','Space',' '].includes(e.key)||e.keyCode===13||e.keyCode===32||e.keyCode===179){
-      aktifkanAudio();
-    }
-  });
-  document.addEventListener('keyup', e=>{
-    if(e.keyCode===13||e.keyCode===179||e.keyCode===32){
-      aktifkanAudio();
-    }
+    if(e.keyCode===13||e.keyCode===32||e.keyCode===179) aktifkanAudio();
   });
   if(overlay.style.display !== 'none') overlay.focus();
 });
