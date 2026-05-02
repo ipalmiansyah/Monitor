@@ -127,7 +127,7 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .kgi-bar.istirahat{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1);}
 
 /* FOOTER */
-.footer{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.07);padding-top:6px;}
+.footer{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.07);padding-top:6px;font-size:10px;color:rgba(255,255,255,0.3);}
 .footer span{font-size:10px;color:rgba(255,255,255,0.25);font-family:var(--mono);}
 </style>
 </head>
@@ -173,8 +173,8 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
   </div>
   <div class="tbl-wrap"><table id="tbl"></table></div>
   <div class="footer">
-    <span id="last-refresh">—</span>
-    <span id="hari-label">—</span>
+    <span id="last-refresh" style="font-size:10px;color:rgba(255,255,255,0.3);">—</span>
+    <span id="hari-label" style="font-size:10px;color:rgba(255,255,255,0.3);">—</span>
   </div>
 </div>
 
@@ -210,18 +210,14 @@ const SUARA = {
   MARS:          '9. Mars SMP.mp3',
 };
 
-let audioUnlocked = false;
-let audioCtx = null;
-
-// Variabel sudah didefinisikan di <head>
-// audioUnlocked, belOtomatis, audioCtx
+// window.audioUnlocked, window.audioCtx, belOtomatis sudah didefinisikan di window (script head)
 
 function cekAudioUnlock(){
   if(sessionStorage.getItem('bel_unlocked')==='1'){
     // Sudah pernah unlock di sesi ini — tapi tetap perlu gesture baru
     // Jadi tampilkan overlay lagi agar user klik sekali
     // (sessionStorage reset saat tab baru, ini sudah unlock di sesi ini)
-    audioUnlocked=true;
+    window.audioUnlocked=true;
     document.getElementById('bel-overlay').style.display='none';
     console.log('[BEL] Sesi lanjut — tapi AudioContext belum dibuat');
     // AudioContext akan dibuat saat bunyikanBel pertama kali dipanggil
@@ -243,20 +239,20 @@ function toggleBelOtomatis(){
 }
 
 function bunyikanBel(namaFile){
-  if(!audioUnlocked){
+  if(!window.audioUnlocked){
     console.log('[BEL] Belum unlock');
     document.getElementById('bel-overlay').style.display='flex';
     return;
   }
   // Kalau AudioContext belum ada (misal dari sessionStorage) — buat dulu
-  if(!audioCtx){
+  if(!window.audioCtx){
     try{
       audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     }catch(e){ console.log('[BEL] Gagal buat AudioContext:',e); }
   }
   try{
-    if(audioCtx && audioCtx.state==='suspended'){
-      audioCtx.resume().then(()=>playAudio(namaFile));
+    if(window.audioCtx && window.audioCtx.state==='suspended'){
+      window.audioCtx.resume().then(()=>playAudio(namaFile));
     } else {
       playAudio(namaFile);
     }
@@ -274,7 +270,7 @@ function playAudio(namaFile){
       }).catch(e=>{
         console.log('[BEL] Play gagal:',e.name,e.message);
         if(e.name==='NotAllowedError'){
-          audioUnlocked=false;
+          window.audioUnlocked=false;
           sessionStorage.removeItem('bel_unlocked');
           document.getElementById('bel-overlay').style.display='flex';
         }
