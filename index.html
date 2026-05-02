@@ -23,7 +23,7 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 .bel-overlay .hint{font-size:15px;color:rgba(255,255,255,0.35);margin-top:8px;}
 .bel-tombol{margin-top:10px;padding:18px 60px;background:#16a34a;color:#fff;border:3px solid #4ade80;border-radius:16px;font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 0 40px rgba(74,222,128,0.35);animation:glow 2s ease-in-out infinite;}
 @keyframes glow{0%,100%{box-shadow:0 0 40px rgba(74,222,128,0.35)}50%{box-shadow:0 0 60px rgba(74,222,128,0.6)}}
-.bel-status-badge{position:fixed;top:10px;right:12px;z-index:100;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;border:none;}
+.bel-status-badge{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;border:none;white-space:nowrap;}
 .bel-status-badge.on{background:rgba(22,163,74,0.25);color:#4ade80;border:1px solid rgba(22,163,74,0.4);}
 .bel-status-badge.off{background:rgba(239,68,68,0.25);color:#f87171;border:1px solid rgba(239,68,68,0.4);}
 
@@ -115,16 +115,18 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
     </button>
     <div class="hint">Klik · Enter · Spasi · OK Remote TV</div>
   </div>
-  <!-- Badge status bel -->
-  <button class="bel-status-badge on" id="bel-badge" onclick="toggleBelOtomatis()" title="Klik untuk ON/OFF bel otomatis">🔔 Bel ON</button>
   <div class="hdr">
     <div class="hdr-left">
       <h1 id="nama-sekolah">Monitor Kelas</h1>
       <p><span class="live-dot"></span> Live · Auto-refresh setiap menit</p>
     </div>
-    <div class="clock-box">
-      <div class="clock-time" id="clk">--:--</div>
-      <div class="clock-date" id="tgl">—</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <!-- Badge status bel — di kiri jam -->
+      <button class="bel-status-badge on" id="bel-badge" onclick="toggleBelOtomatis()" title="Klik untuk ON/OFF bel otomatis">🔔 Bel ON</button>
+      <div class="clock-box">
+        <div class="clock-time" id="clk">--:--</div>
+        <div class="clock-date" id="tgl">—</div>
+      </div>
     </div>
   </div>
   <div class="legend">
@@ -314,7 +316,15 @@ async function loadData(){
     dPenanganan=d.penanganan||[];
     if(d.istirahat) dIstirahat=d.istirahat;
     if(d.rutin) dRutin=d.rutin;
-    if(typeof d.belOtomatis !== 'undefined') belOtomatis=d.belOtomatis;
+    if(typeof d.belOtomatis !== 'undefined'){
+      belOtomatis=d.belOtomatis;
+      // Update tampilan badge
+      const badge=document.getElementById('bel-badge');
+      if(badge){
+        badge.textContent = belOtomatis ? '🔔 Bel ON' : '🔕 Bel OFF';
+        badge.className = 'bel-status-badge ' + (belOtomatis ? 'on' : 'off');
+      }
+    }
     // Cek trigger bel dari HP piket
     if(d.belTrigger && d.belTrigger.ts && d.belTrigger.ts !== lastBelTrigger){
       lastBelTrigger = d.belTrigger.ts;
@@ -335,35 +345,38 @@ function cekBelOtomatis(){
   if(!belOtomatis) return;
   const hr=hariIni(), tgl=tglStr(), n=nowMin();
 
-  // Kumpulkan semua waktu bel hari ini
   const events=[];
 
-  // Jam pertama pagi (mulai paling awal hari ini)
+  // Alarm 07:15 — hanya Senin, Jumat, Sabtu, bunyi 2x
+  if(['Senin','Jumat','Sabtu'].includes(hr)){
+    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi', ulang:2});
+  }
+
+  // Jam pertama pagi
   const jamPertama=dJadwal.filter(j=>j.hari===hr).map(j=>pJam(j.jamMulai)).sort((a,b)=>a-b)[0];
-  if(jamPertama!==undefined) events.push({menit:jamPertama, suara:SUARA.MASUK_PAGI, id:'masuk-pagi'});
+  if(jamPertama!==undefined){
+    // Senin/Jumat/Sabtu: jam pertama pakai masuk kelas biasa (alarm sudah bunyi 07:15)
+    // Selasa/Rabu/Kamis: jam pertama pakai masuk kelas
+    events.push({menit:jamPertama, suara:SUARA.MASUK_PAGI, id:'masuk-pagi'});
+  }
 
-  // Upacara hari Senin
-  if(hr==='Senin') events.push({menit:pJam('07:30'), suara:SUARA.UPACARA, id:'upacara'});
-
-  // Istirahat — bel saat mulai istirahat & akhir istirahat
+  // Istirahat
   dIstirahat.filter(k=>k.hari===hr).forEach(k=>{
-    events.push({menit:pJam(k.jamMulai),  suara:SUARA.ISTIRAHAT,  id:'ist-mulai-'+k.jamMulai});
-    events.push({menit:pJam(k.jamSelesai),suara:SUARA.MASUK_STLH, id:'ist-selesai-'+k.jamSelesai});
+    events.push({menit:pJam(k.jamMulai),   suara:SUARA.ISTIRAHAT,  id:'ist-mulai-'+k.jamMulai});
+    events.push({menit:pJam(k.jamSelesai), suara:SUARA.MASUK_STLH, id:'ist-selesai-'+k.jamSelesai});
   });
 
-  // Akhir setiap jam pelajaran (ganti jam)
+  // Akhir setiap jam pelajaran
   const sesiSet=new Set();
   const semuaJam=dJadwal.filter(j=>j.hari===hr);
   semuaJam.forEach(j=>{
     const key=j.jamSelesai;
     if(sesiSet.has(key)) return;
     sesiSet.add(key);
-    // Tentukan jenis bel akhir
     const ist=dIstirahat.find(k=>k.hari===hr&&k.jamMulai===j.jamSelesai);
     const isAkhirHari=!semuaJam.find(x=>x.jamMulai===j.jamSelesai);
-    if(ist) return; // sudah di-handle sebagai bel istirahat
+    if(ist) return;
     if(isAkhirHari){
-      // Bel pulang
       const suaraPulang=hr==='Sabtu'?SUARA.PULANG_SABTU:SUARA.PULANG_SENINJUM;
       events.push({menit:pJam(key), suara:suaraPulang, id:'pulang-'+key});
     } else {
@@ -376,6 +389,19 @@ function cekBelOtomatis(){
     const selisih=Math.abs(n-ev.menit);
     if(selisih<=1 && !belDimainkan[tgl+'-'+ev.id]){
       belDimainkan[tgl+'-'+ev.id]=true;
+      if(ev.ulang && ev.ulang>1){
+        // Bunyi pertama
+        bunyikanBel(ev.suara);
+        // Bunyi kedua setelah jeda sesuai durasi audio (estimasi 8 detik)
+        setTimeout(()=>bunyikanBel(ev.suara), 9000);
+      } else {
+        bunyikanBel(ev.suara);
+      }
+      // Kirim trigger ke sheet
+      fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
+    }
+  });
+}
       bunyikanBel(ev.suara);
       // Kirim trigger ke sheet supaya tercatat
       fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
@@ -413,7 +439,8 @@ function renderGrid(){
   }
 
   let cntH=0,cntM=0,cntMH=0,cntK=0,cntKC=0;
-  let html=`<thead><tr><th>Sesi</th>${kls.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>`;
+  let nomorSesi=0; // counter nomor urut sesi mengajar
+  let html=`<thead><tr><th style="width:20px">No</th><th>Sesi</th>${kls.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>`;
 
   ses.forEach((si,idx)=>{
     const kgiF=cekKgiSesi(si.s,si.e,hr,tgl);
@@ -421,13 +448,17 @@ function renderGrid(){
       let bc='istirahat',ic='☕';
       if(kgiF.tipe==='rutin'){bc='rutin';ic='📣';}
       if(kgiF.tipe==='insidental'){bc='insidental';ic='📌';}
-      html+=`<tr><td class="sesi">${si.s}<br>${si.e}</td><td colspan="${kls.length}"><div class="kgi-bar ${bc}">${ic} ${kgiF.ket}</div></td></tr>`;
+      // Tidak ada nomor untuk kegiatan rutin/istirahat/insidental
+      html+=`<tr><td class="sesi" style="color:rgba(255,255,255,0.15);font-size:8px;">—</td><td class="sesi">${si.s}<br>${si.e}</td><td colspan="${kls.length}"><div class="kgi-bar ${bc}">${ic} ${kgiF.ket}</div></td></tr>`;
       return;
     }
     if(si.spOnly) return;
 
+    nomorSesi++;
     const stSesi=sSesi(si.s,si.e);
-    html+=`<tr><td class="sesi${stSesi==='berlangsung'?' aktif':''}">${si.s}<br>${si.e}</td>`;
+    html+=`<tr>
+      <td class="sesi${stSesi==='berlangsung'?' aktif':''}" style="font-size:11px;font-weight:900;color:${stSesi==='berlangsung'?'#4ade80':'rgba(255,255,255,0.3)'};">${nomorSesi}</td>
+      <td class="sesi${stSesi==='berlangsung'?' aktif':''}">${si.s}<br>${si.e}</td>`;
 
     kls.forEach(kl=>{
       const j=jh.find(x=>x.kelas===kl&&x.jamMulai===si.s);
