@@ -102,19 +102,19 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .footer span{font-size:10px;color:rgba(255,255,255,0.25);font-family:var(--mono);}
 </style>
 </head>
-<body onclick="aktifkanAudio()">
+<body>
 <div class="outer">
-  <!-- OVERLAY: klik di mana saja untuk aktifkan -->
-  <div class="bel-overlay" id="bel-overlay">
-    <div class="bel-ikon">🔔</div>
-    <h2>Monitor Kelas Siap</h2>
-    <p>Klik di mana saja atau tekan tombol apa saja<br>untuk mengaktifkan bel otomatis</p>
-    <div class="bel-tombol">
+  <!-- OVERLAY -->
+  <button id="bel-overlay" onclick="aktifkanAudio()" style="position:fixed;inset:0;z-index:9999;background:#0f172a;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;width:100%;height:100%;">
+    <div style="font-size:80px;animation:pulse 1.5s ease-in-out infinite;">🔔</div>
+    <div style="font-size:32px;font-weight:900;color:#fff;">Monitor Kelas Siap</div>
+    <div style="font-size:18px;color:rgba(255,255,255,0.6);">Klik di mana saja untuk mengaktifkan bel</div>
+    <div style="padding:18px 60px;background:#16a34a;color:#fff;border-radius:16px;font-size:20px;font-weight:900;box-shadow:0 0 40px rgba(74,222,128,0.4);display:flex;align-items:center;gap:12px;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-      Klik Di Mana Saja untuk Aktifkan
+      Aktifkan Bel
     </div>
-    <div class="hint">Klik · Enter · Spasi · OK Remote TV</div>
-  </div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.3);">Klik · Enter · Spasi · OK Remote TV</div>
+  </button>
   <div class="hdr">
     <div class="hdr-left">
       <h1 id="nama-sekolah">Monitor Kelas</h1>
