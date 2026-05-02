@@ -13,6 +13,20 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 
 .outer{height:100vh;display:flex;flex-direction:column;padding:12px 18px 10px;gap:8px;}
 
+/* OVERLAY AKTIFKAN BEL */
+.bel-overlay{position:fixed;inset:0;z-index:999;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;}
+.bel-overlay:focus{outline:none;}
+.bel-ikon{font-size:80px;animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.bel-overlay h2{font-size:32px;font-weight:900;color:#fff;text-align:center;margin:0;}
+.bel-overlay p{font-size:18px;color:rgba(255,255,255,0.6);text-align:center;line-height:1.7;margin:0;}
+.bel-overlay .hint{font-size:15px;color:rgba(255,255,255,0.35);margin-top:8px;}
+.bel-tombol{margin-top:10px;padding:18px 60px;background:#16a34a;color:#fff;border:3px solid #4ade80;border-radius:16px;font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 0 40px rgba(74,222,128,0.35);animation:glow 2s ease-in-out infinite;}
+@keyframes glow{0%,100%{box-shadow:0 0 40px rgba(74,222,128,0.35)}50%{box-shadow:0 0 60px rgba(74,222,128,0.6)}}
+.bel-status-badge{position:fixed;top:10px;right:12px;z-index:100;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;border:none;}
+.bel-status-badge.on{background:rgba(22,163,74,0.25);color:#4ade80;border:1px solid rgba(22,163,74,0.4);}
+.bel-status-badge.off{background:rgba(239,68,68,0.25);color:#f87171;border:1px solid rgba(239,68,68,0.4);}
+
 /* HEADER */
 .hdr{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .hdr-left h1{font-size:18px;font-weight:900;letter-spacing:-0.3px;}
@@ -90,6 +104,19 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 </head>
 <body>
 <div class="outer">
+  <!-- OVERLAY: klik/tekan OK remote untuk aktifkan audio -->
+  <div class="bel-overlay" id="bel-overlay" tabindex="0">
+    <div class="bel-ikon">🔔</div>
+    <h2>Monitor Kelas Siap</h2>
+    <p>Tekan tombol apa saja untuk mengaktifkan bel otomatis</p>
+    <button class="bel-tombol" onclick="aktifkanAudio()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      Aktifkan Bel
+    </button>
+    <div class="hint">Klik · Enter · Spasi · OK Remote TV</div>
+  </div>
+  <!-- Badge status bel -->
+  <button class="bel-status-badge on" id="bel-badge" onclick="toggleBelOtomatis()" title="Klik untuk ON/OFF bel otomatis">🔔 Bel ON</button>
   <div class="hdr">
     <div class="hdr-left">
       <h1 id="nama-sekolah">Monitor Kelas</h1>
@@ -158,13 +185,72 @@ const SUARA = {
   MARS:          '9. Mars SMP.mp3',
 };
 
+let audioUnlocked = false;
+
+function aktifkanAudio(){
+  if(audioUnlocked) return;
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if(ctx.state === 'suspended') ctx.resume();
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  }catch(e){}
+  audioUnlocked = true;
+  document.getElementById('bel-overlay').style.display = 'none';
+  console.log('[BEL] ✅ Audio unlocked!');
+}
+
+// Aktifkan dengan klik di mana saja pada overlay
+document.addEventListener('DOMContentLoaded', ()=>{
+  const overlay = document.getElementById('bel-overlay');
+  // Klik/tap di mana saja pada overlay
+  overlay.addEventListener('click', aktifkanAudio);
+  // Keyboard: Enter, Spasi, OK remote TV
+  document.addEventListener('keydown', e=>{
+    if(['Enter','Space',' '].includes(e.key)||e.keyCode===13||e.keyCode===32||e.keyCode===179){
+      aktifkanAudio();
+    }
+  });
+  // Remote TV biasanya kirim keyCode 13 (OK) atau 179 (Play)
+  document.addEventListener('keyup', e=>{
+    if(e.keyCode===13||e.keyCode===179||e.keyCode===32){
+      aktifkanAudio();
+    }
+  });
+  // Focus overlay agar remote TV bisa langsung tekan OK
+  overlay.focus();
+});
+
+function toggleBelOtomatis(){
+  belOtomatis = !belOtomatis;
+  const badge = document.getElementById('bel-badge');
+  badge.textContent = belOtomatis ? '🔔 Bel ON' : '🔕 Bel OFF';
+  badge.className = 'bel-status-badge ' + (belOtomatis ? 'on' : 'off');
+  // Simpan ke sheet
+  fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'setBelOtomatis',status:belOtomatis?'ON':'OFF'})}).catch(()=>{});
+}
+
 function bunyikanBel(namaFile){
+  if(!audioUnlocked){
+    console.log('[BEL] Audio belum diaktifkan — tampilkan overlay');
+    document.getElementById('bel-overlay').style.display='flex';
+    return;
+  }
   try{
     const audio = new Audio('suara/' + namaFile);
     audio.volume = 1.0;
-    audio.play().catch(e=>console.log('Audio error:',e));
-    console.log('[BEL] Membunyikan:', namaFile);
-  }catch(e){ console.log('Bel error:', e); }
+    audio.play().then(()=>{
+      console.log('[BEL] ✅ Berbunyi:', namaFile);
+    }).catch(e=>{
+      console.log('[BEL] Error play:', e.message);
+      // Coba unlock lagi
+      audioUnlocked = false;
+      document.getElementById('bel-overlay').style.display='flex';
+    });
+  }catch(e){ console.log('[BEL] Error:', e); }
 }
 
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
