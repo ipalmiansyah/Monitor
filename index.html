@@ -30,6 +30,7 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 .lb.h{background:#22c55e;}.lb.m{background:#ef4444;}.lb.mh{background:#fb7185;}
 .lb.k{background:#eab308;}.lb.b{background:#60a5fa;}.lb.a{background:rgba(255,255,255,0.15);}
 .lb.u{background:#8b5cf6;}.lb.o{background:#f97316;}.lb.s{background:rgba(255,255,255,0.1);}
+.lb.kc{background:#fbbf24;}
 
 /* STATS */
 .stats{display:flex;gap:8px;flex-shrink:0;}
@@ -60,6 +61,8 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .cell.k{background:rgba(234,179,8,0.14);border-color:rgba(234,179,8,0.35);}
 .cell.b{background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.2);}
 .cell.a{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);}
+.cell.kc{background:rgba(251,191,36,0.15);border-color:rgba(251,191,36,0.4);}
+.kc .cn{color:#fde047;}.kc .cp{color:rgba(253,224,71,0.65);}.kc .cj{color:#fbbf24;}
 .cell.x{background:transparent;border-color:transparent;}
 @keyframes gh{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}50%{box-shadow:0 0 8px 1px rgba(34,197,94,0.12)}}
 @keyframes rm{0%,100%{background:rgba(239,68,68,0.16)}50%{background:rgba(239,68,68,0.26)}}
@@ -104,6 +107,7 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
     <div class="leg"><div class="lb k"></div>Pergantian</div>
     <div class="leg"><div class="lb b"></div>Akan Mulai</div>
     <div class="leg"><div class="lb a"></div>Selesai</div>
+    <div class="leg"><div class="lb kc"></div>Keluar Cepat</div>
     <div class="leg"><div class="lb u"></div>Rutin</div>
     <div class="leg"><div class="lb o"></div>Insidental</div>
     <div class="leg"><div class="lb s"></div>Istirahat</div>
@@ -113,6 +117,7 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
     <div class="stat m" id="st-m">0 Kosong</div>
     <div class="stat mh" id="st-mh">0 Ditangani</div>
     <div class="stat k" id="st-k">0 Pergantian</div>
+    <div class="stat" style="background:rgba(251,191,36,0.15);color:#fde047;border:1px solid rgba(251,191,36,0.3)" id="st-kc">0 Keluar Cepat</div>
   </div>
   <div class="tbl-wrap"><table id="tbl"></table></div>
   <div class="footer">
@@ -138,12 +143,47 @@ const DATA_RUTIN_LOKAL = [{"hari": "Senin", "jamMulai": "07:30", "jamSelesai": "
 
 let dJadwal=[], dAbsensi=[], dInsidental=[], dPenanganan=[];
 let dIstirahat=DATA_ISTIRAHAT_LOKAL, dRutin=DATA_RUTIN_LOKAL;
+let belOtomatis=true, lastBelTrigger='', belDimainkan={};
+
+// PEMETAAN BEL OTOMATIS
+const SUARA = {
+  MASUK_PAGI:    '2. masuk klas 2 bhs.mp3',
+  GANTI_JAM:     '3. ganti plajaran jadi 2 bhs.mp3',
+  ISTIRAHAT:     '4. istirahat 2bhs.mp3',
+  MASUK_STLH:    '5. masuk stlh istirahat 2 bhs.mp3',
+  PULANG_SENINJUM: "6.jam pulang senin-jum'at.mp3",
+  PULANG_SABTU:  '7.jam pulang khusus sabtu jadi.mp3',
+  UPACARA:       '8. upacara bedera jadi.mp3',
+  ALARM:         '1. alarm.mp3',
+  MARS:          '9. Mars SMP.mp3',
+};
+
+function bunyikanBel(namaFile){
+  try{
+    const audio = new Audio('suara/' + namaFile);
+    audio.volume = 1.0;
+    audio.play().catch(e=>console.log('Audio error:',e));
+    console.log('[BEL] Membunyikan:', namaFile);
+  }catch(e){ console.log('Bel error:', e); }
+}
 
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
 const pJam=s=>{const[h,m]=s.split(':').map(Number);return h*60+m;};
 const hariIni=()=>new Date().toLocaleDateString('id-ID',{weekday:'long'});
 const tglStr=()=>new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
-function sSesi(s,e){const n=nowMin(),sm=pJam(s),em=pJam(e);return n>=em?'selesai':n>=sm?'berlangsung':'akan';}
+const TOLERANSI=5; // menit
+
+function sSesi(s,e){
+  const n=nowMin(),sm=pJam(s),em=pJam(e);
+  if(n>=em) return 'selesai';
+  if(n>=sm+TOLERANSI) return 'berlangsung';
+  if(n>=sm) return 'toleransi'; // 5 menit pertama masih biru
+  return 'akan';
+}
+function isKeluarCepat(jamKeluar,jamSelesai){
+  if(!jamKeluar||jamKeluar==='-') return false;
+  return pJam(jamSelesai)-pJam(jamKeluar)>TOLERANSI;
+}
 function sortKelas(a,b){const T={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10,XI:11,XII:12};const p=k=>{const m=k.match(/^([IVXLC]+)-?(.*)$/i);return m?{t:T[m[1].toUpperCase()]||99,s:m[2]||''}:{t:99,s:k};};const pa=p(a),pb=p(b);return pa.t!==pb.t?pa.t-pb.t:pa.s.localeCompare(pb.s);}
 
 function tickClock(){
@@ -164,12 +204,80 @@ async function loadData(){
     dPenanganan=d.penanganan||[];
     if(d.istirahat) dIstirahat=d.istirahat;
     if(d.rutin) dRutin=d.rutin;
+    if(typeof d.belOtomatis !== 'undefined') belOtomatis=d.belOtomatis;
+    // Cek trigger bel dari HP piket
+    if(d.belTrigger && d.belTrigger.ts && d.belTrigger.ts !== lastBelTrigger){
+      lastBelTrigger = d.belTrigger.ts;
+      bunyikanBel(d.belTrigger.suara);
+      // Clear trigger di sheet
+      fetch(CFG.APPS_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'clearBelTrigger'})}).catch(()=>{});
+    }
   }catch(e){
     dJadwal=DATA_JADWAL_LOKAL;
     dAbsensi=[];dInsidental=[];dPenanganan=[];
   }
+  cekBelOtomatis();
   renderGrid();
 }
+
+// ── CEK BEL OTOMATIS ──
+function cekBelOtomatis(){
+  if(!belOtomatis) return;
+  const hr=hariIni(), tgl=tglStr(), n=nowMin();
+
+  // Kumpulkan semua waktu bel hari ini
+  const events=[];
+
+  // Jam pertama pagi (mulai paling awal hari ini)
+  const jamPertama=dJadwal.filter(j=>j.hari===hr).map(j=>pJam(j.jamMulai)).sort((a,b)=>a-b)[0];
+  if(jamPertama!==undefined) events.push({menit:jamPertama, suara:SUARA.MASUK_PAGI, id:'masuk-pagi'});
+
+  // Upacara hari Senin
+  if(hr==='Senin') events.push({menit:pJam('07:30'), suara:SUARA.UPACARA, id:'upacara'});
+
+  // Istirahat — bel saat mulai istirahat & akhir istirahat
+  dIstirahat.filter(k=>k.hari===hr).forEach(k=>{
+    events.push({menit:pJam(k.jamMulai),  suara:SUARA.ISTIRAHAT,  id:'ist-mulai-'+k.jamMulai});
+    events.push({menit:pJam(k.jamSelesai),suara:SUARA.MASUK_STLH, id:'ist-selesai-'+k.jamSelesai});
+  });
+
+  // Akhir setiap jam pelajaran (ganti jam)
+  const sesiSet=new Set();
+  const semuaJam=dJadwal.filter(j=>j.hari===hr);
+  semuaJam.forEach(j=>{
+    const key=j.jamSelesai;
+    if(sesiSet.has(key)) return;
+    sesiSet.add(key);
+    // Tentukan jenis bel akhir
+    const ist=dIstirahat.find(k=>k.hari===hr&&k.jamMulai===j.jamSelesai);
+    const isAkhirHari=!semuaJam.find(x=>x.jamMulai===j.jamSelesai);
+    if(ist) return; // sudah di-handle sebagai bel istirahat
+    if(isAkhirHari){
+      // Bel pulang
+      const suaraPulang=hr==='Sabtu'?SUARA.PULANG_SABTU:SUARA.PULANG_SENINJUM;
+      events.push({menit:pJam(key), suara:suaraPulang, id:'pulang-'+key});
+    } else {
+      events.push({menit:pJam(key), suara:SUARA.GANTI_JAM, id:'ganti-'+key});
+    }
+  });
+
+  // Cek event yang tepat pada menit ini (±1 menit toleransi)
+  events.forEach(ev=>{
+    const selisih=Math.abs(n-ev.menit);
+    if(selisih<=1 && !belDimainkan[tgl+'-'+ev.id]){
+      belDimainkan[tgl+'-'+ev.id]=true;
+      bunyikanBel(ev.suara);
+      // Kirim trigger ke sheet supaya tercatat
+      fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
+    }
+  });
+}
+
+// Reset belDimainkan setiap hari baru
+setInterval(()=>{
+  const tgl=tglStr();
+  Object.keys(belDimainkan).forEach(k=>{ if(!k.startsWith(tgl)) delete belDimainkan[k]; });
+}, 60000);
 
 function cekKgiSesi(jm,je,hr,tgl){
   for(const k of dIstirahat){if(k.hari===hr&&k.jamMulai===jm&&k.jamSelesai===je)return{tipe:'istirahat',ket:k.keterangan};}
@@ -194,7 +302,7 @@ function renderGrid(){
     return;
   }
 
-  let cntH=0,cntM=0,cntMH=0,cntK=0;
+  let cntH=0,cntM=0,cntMH=0,cntK=0,cntKC=0;
   let html=`<thead><tr><th>Sesi</th>${kls.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>`;
 
   ses.forEach((si,idx)=>{
@@ -215,11 +323,11 @@ function renderGrid(){
       const j=jh.find(x=>x.kelas===kl&&x.jamMulai===si.s);
       if(!j){html+=`<td><div class="cell x"></div></td>`;return;}
 
-      // 1 scan = semua sesi guru di kelas hari ini
       const absMasuk =dAbsensi.find(a=>a.kelas===kl&&a.tanggal===tgl&&a.mode==='masuk' &&a.guru===j.namaGuru);
       const absKeluar=dAbsensi.find(a=>a.kelas===kl&&a.tanggal===tgl&&a.mode==='keluar'&&a.guru===j.namaGuru);
+      const kcData=absKeluar&&isKeluarCepat(absKeluar.jam,si.e)?absKeluar:null;
 
-      // Cek guru lama kelas sama
+      // Cek guru lama kelas sama — hijau jika belum keluar atau keluar tidak cepat
       let guruLamaHijau=false;
       for(let pi=idx-1;pi>=0;pi--){
         const siP=ses[pi];
@@ -228,23 +336,27 @@ function renderGrid(){
         if(jP&&jP.namaGuru!==j.namaGuru){
           const pM=dAbsensi.find(a=>a.kelas===kl&&a.tanggal===tgl&&a.mode==='masuk'&&a.guru===jP.namaGuru);
           const pK=dAbsensi.find(a=>a.kelas===kl&&a.tanggal===tgl&&a.mode==='keluar'&&a.guru===jP.namaGuru);
-          if(pM&&!pK)guruLamaHijau=true;
+          if(pM&&(!pK||!isKeluarCepat(pK.jam,siP.e))) guruLamaHijau=true;
         }
         break;
       }
 
-      // Cek penanganan
       const ditangani=dPenanganan.find(p=>p.kelas===kl&&p.tanggal===tgl&&p.jamMulai===si.s&&p.status!=='BATAL');
 
       let cls='a', note='';
-      if(stSesi==='akan'){cls='b';}
+      if(stSesi==='akan'||stSesi==='toleransi'){
+        if(kcData){cls='kc';cntKC++;note='<div class="cj">⚡ Keluar Cepat</div>';}
+        else cls='b';
+      }
       else if(stSesi==='berlangsung'){
         if(guruLamaHijau){cls='k';cntK++;}
+        else if(kcData){cls='kc';cntKC++;note='<div class="cj">⚡ Keluar Cepat</div>';}
         else if(absMasuk){cls='h';cntH++;}
         else if(ditangani){cls='mh';cntMH++;note=`<div class="handle-mark">✓${ditangani.guruPiket}</div>`;}
         else{cls='m';cntM++;}
       } else {
-        if(absMasuk&&!absKeluar){cls='h';cntH++;note='<div class="cj">▶ di kelas</div>';}
+        if(kcData){cls='kc';cntKC++;note='<div class="cj">⚡ Keluar Cepat</div>';}
+        else if(absMasuk&&!absKeluar){cls='h';cntH++;note='<div class="cj">▶ di kelas</div>';}
         else cls='a';
       }
 
@@ -262,11 +374,13 @@ function renderGrid(){
   document.getElementById('st-m').textContent=cntM+' Kosong';
   document.getElementById('st-mh').textContent=cntMH+' Ditangani';
   document.getElementById('st-k').textContent=cntK+' Pergantian';
+  document.getElementById('st-kc').textContent=cntKC+' Keluar Cepat';
   document.getElementById('last-refresh').textContent='Refresh: '+new Date().toLocaleTimeString('id-ID');
 }
 
 loadData();
 setInterval(loadData, 60000);
+setInterval(cekBelOtomatis, 30000); // cek bel tiap 30 detik
 </script>
 </body>
 </html>
