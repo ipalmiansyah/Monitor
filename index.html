@@ -186,42 +186,54 @@ const SUARA = {
 };
 
 let audioUnlocked = false;
+let audioCtx = null;
 
 function aktifkanAudio(){
   if(audioUnlocked) return;
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if(ctx.state === 'suspended') ctx.resume();
-    const buf = ctx.createBuffer(1,1,22050);
-    const src = ctx.createBufferSource();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const buf = audioCtx.createBuffer(1,1,22050);
+    const src = audioCtx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(audioCtx.destination);
     src.start(0);
-  }catch(e){}
+  }catch(e){ console.log('AudioContext error:',e); }
   audioUnlocked = true;
+  sessionStorage.setItem('bel_unlocked','1');
   document.getElementById('bel-overlay').style.display = 'none';
   console.log('[BEL] ✅ Audio unlocked!');
 }
 
+// Cek apakah sudah pernah unlock di sesi ini
+function cekAudioUnlock(){
+  if(sessionStorage.getItem('bel_unlocked')==='1'){
+    audioUnlocked = true;
+    document.getElementById('bel-overlay').style.display = 'none';
+    // Inisialisasi AudioContext tanpa perlu interaksi (sudah unlock sebelumnya)
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }catch(e){}
+    console.log('[BEL] ✅ Audio sudah unlock dari sesi sebelumnya');
+  }
+}
+
 // Aktifkan dengan klik di mana saja pada overlay
 document.addEventListener('DOMContentLoaded', ()=>{
+  cekAudioUnlock();
   const overlay = document.getElementById('bel-overlay');
-  // Klik/tap di mana saja pada overlay
   overlay.addEventListener('click', aktifkanAudio);
-  // Keyboard: Enter, Spasi, OK remote TV
   document.addEventListener('keydown', e=>{
     if(['Enter','Space',' '].includes(e.key)||e.keyCode===13||e.keyCode===32||e.keyCode===179){
       aktifkanAudio();
     }
   });
-  // Remote TV biasanya kirim keyCode 13 (OK) atau 179 (Play)
   document.addEventListener('keyup', e=>{
     if(e.keyCode===13||e.keyCode===179||e.keyCode===32){
       aktifkanAudio();
     }
   });
-  // Focus overlay agar remote TV bisa langsung tekan OK
-  overlay.focus();
+  if(overlay.style.display !== 'none') overlay.focus();
 });
 
 function toggleBelOtomatis(){
@@ -235,22 +247,35 @@ function toggleBelOtomatis(){
 
 function bunyikanBel(namaFile){
   if(!audioUnlocked){
-    console.log('[BEL] Audio belum diaktifkan — tampilkan overlay');
+    console.log('[BEL] Belum unlock — tampilkan overlay');
     document.getElementById('bel-overlay').style.display='flex';
+    document.getElementById('bel-overlay').focus();
     return;
   }
   try{
-    const audio = new Audio('suara/' + namaFile);
-    audio.volume = 1.0;
-    audio.play().then(()=>{
-      console.log('[BEL] ✅ Berbunyi:', namaFile);
-    }).catch(e=>{
-      console.log('[BEL] Error play:', e.message);
-      // Coba unlock lagi
-      audioUnlocked = false;
-      document.getElementById('bel-overlay').style.display='flex';
-    });
+    // Pastikan AudioContext aktif
+    if(audioCtx && audioCtx.state === 'suspended'){
+      audioCtx.resume().then(()=> playAudio(namaFile));
+    } else {
+      playAudio(namaFile);
+    }
   }catch(e){ console.log('[BEL] Error:', e); }
+}
+
+function playAudio(namaFile){
+  const audio = new Audio('suara/' + namaFile);
+  audio.volume = 1.0;
+  audio.play().then(()=>{
+    console.log('[BEL] ✅ Berbunyi:', namaFile);
+  }).catch(e=>{
+    console.log('[BEL] Play gagal:', e.message);
+    // Reset unlock state jika gagal
+    if(e.name === 'NotAllowedError'){
+      audioUnlocked = false;
+      sessionStorage.removeItem('bel_unlocked');
+      document.getElementById('bel-overlay').style.display='flex';
+    }
+  });
 }
 
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
