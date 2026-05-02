@@ -404,13 +404,6 @@ function cekBelOtomatis(){
     }
   });
 }
-      bunyikanBel(ev.suara);
-      // Kirim trigger ke sheet supaya tercatat
-      fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
-    }
-  });
-}
-
 // Reset belDimainkan setiap hari baru
 setInterval(()=>{
   const tgl=tglStr();
