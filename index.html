@@ -263,13 +263,12 @@ function bunyikanBel(namaFile){
 }
 
 function playAudio(namaFile){
-  const audio = new Audio('suara/' + namaFile);
+  const audio = new Audio('https://ipalmiansyah.github.io/Monitor/' + namaFile);
   audio.volume = 1.0;
   audio.play().then(()=>{
     console.log('[BEL] ✅ Berbunyi:', namaFile);
   }).catch(e=>{
     console.log('[BEL] Play gagal:', e.message);
-    // Reset unlock state jika gagal
     if(e.name === 'NotAllowedError'){
       audioUnlocked = false;
       sessionStorage.removeItem('bel_unlocked');
