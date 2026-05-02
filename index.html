@@ -345,6 +345,9 @@ async function loadData(){
     dJadwal=DATA_JADWAL_LOKAL;
     dAbsensi=[];dInsidental=[];dPenanganan=[];
   }
+  // Update jam reload — selalu jalan walau renderGrid error
+  const el=document.getElementById('last-refresh');
+  if(el) el.textContent='Update: '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   cekBelOtomatis();
   renderGrid();
 }
