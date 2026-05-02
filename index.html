@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitor Kelas — SMP Negeri 05 Sarolangun</title>
+<script>
+// Definisikan di sini supaya tersedia sebelum HTML body load
+function aktifkanAudio(){
+  var el=document.getElementById('bel-overlay');
+  if(el) el.style.display='none';
+  if(window.audioUnlocked) return;
+  window.audioUnlocked=true;
+  window.belOtomatis=true;
+  sessionStorage.setItem('bel_unlocked','1');
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    ctx.resume(); window.audioCtx=ctx;
+  }catch(e){}
+  var badge=document.getElementById('bel-badge');
+  if(badge){badge.textContent='🔔 Bel ON';badge.className='bel-status-badge on';}
+  if(window.CFG){
+    fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(function(){});
+  }
+  console.log('[BEL] ✅ Aktif!');
+}
+window.audioUnlocked=false;
+window.belOtomatis=true;
+window.audioCtx=null;
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap');
 :root{--font:'Plus Jakarta Sans',sans-serif;--mono:'JetBrains Mono',monospace;--bg:#0f172a;}
@@ -105,15 +129,9 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 <body>
 <div class="outer">
   <!-- OVERLAY -->
-  <button id="bel-overlay" onclick="aktifkanAudio()" style="position:fixed;inset:0;z-index:9999;background:#0f172a;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;width:100%;height:100%;">
-    <div style="font-size:80px;animation:pulse 1.5s ease-in-out infinite;">🔔</div>
-    <div style="font-size:32px;font-weight:900;color:#fff;">Monitor Kelas Siap</div>
-    <div style="font-size:18px;color:rgba(255,255,255,0.6);">Klik di mana saja untuk mengaktifkan bel</div>
-    <div style="padding:18px 60px;background:#16a34a;color:#fff;border-radius:16px;font-size:20px;font-weight:900;box-shadow:0 0 40px rgba(74,222,128,0.4);display:flex;align-items:center;gap:12px;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-      Aktifkan Bel
-    </div>
-    <div style="font-size:14px;color:rgba(255,255,255,0.3);">Klik · Enter · Spasi · OK Remote TV</div>
+  <button id="bel-overlay" onclick="aktifkanAudio()" style="position:fixed;inset:0;z-index:9999;background:#0f172a;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;width:100%;height:100%;">
+    <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Monitor Kelas Siap</div>
+    <div style="padding:16px 56px;background:#16a34a;color:#fff;border-radius:14px;font-size:20px;font-weight:900;box-shadow:0 0 30px rgba(74,222,128,0.3);">Mulai</div>
   </button>
   <div class="hdr">
     <div class="hdr-left">
@@ -190,33 +208,8 @@ const SUARA = {
 let audioUnlocked = false;
 let audioCtx = null;
 
-function aktifkanAudio(){
-  // Selalu sembunyikan overlay saat diklik
-  document.getElementById('bel-overlay').style.display = 'none';
-
-  if(audioUnlocked) return;
-
-  try{
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    const buf = audioCtx.createBuffer(1,1,22050);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(audioCtx.destination);
-    src.start(0);
-  }catch(e){ console.log('AudioContext error:',e); }
-
-  audioUnlocked = true;
-  sessionStorage.setItem('bel_unlocked','1');
-
-  // Set bel otomatis ON di sheet juga (override status OFF)
-  belOtomatis = true;
-  const badge = document.getElementById('bel-badge');
-  if(badge){ badge.textContent='🔔 Bel ON'; badge.className='bel-status-badge on'; }
-  fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(()=>{});
-
-  console.log('[BEL] ✅ Audio unlocked! Bel otomatis ON.');
-}
+// Variabel sudah didefinisikan di <head>
+// audioUnlocked, belOtomatis, audioCtx
 
 // Cek apakah sudah pernah unlock di sesi ini
 function cekAudioUnlock(){
