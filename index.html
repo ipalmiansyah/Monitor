@@ -102,17 +102,17 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .footer span{font-size:10px;color:rgba(255,255,255,0.25);font-family:var(--mono);}
 </style>
 </head>
-<body>
+<body onclick="aktifkanAudio()">
 <div class="outer">
-  <!-- OVERLAY: klik/tekan OK remote untuk aktifkan audio -->
-  <div class="bel-overlay" id="bel-overlay" tabindex="0">
+  <!-- OVERLAY: klik di mana saja untuk aktifkan -->
+  <div class="bel-overlay" id="bel-overlay">
     <div class="bel-ikon">🔔</div>
     <h2>Monitor Kelas Siap</h2>
-    <p>Tekan tombol apa saja untuk mengaktifkan bel otomatis</p>
-    <button class="bel-tombol" onclick="aktifkanAudio()">
+    <p>Klik di mana saja atau tekan tombol apa saja<br>untuk mengaktifkan bel otomatis</p>
+    <div class="bel-tombol">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-      Aktifkan Bel
-    </button>
+      Klik Di Mana Saja untuk Aktifkan
+    </div>
     <div class="hint">Klik · Enter · Spasi · OK Remote TV</div>
   </div>
   <div class="hdr">
@@ -230,18 +230,13 @@ function cekAudioUnlock(){
   }
 }
 
-// Aktifkan dengan klik di mana saja pada overlay
-document.addEventListener('DOMContentLoaded', ()=>{
-  cekAudioUnlock();
-  const overlay = document.getElementById('bel-overlay');
-  // Klik di mana saja pada overlay — termasuk tombol di dalamnya
-  overlay.addEventListener('click', aktifkanAudio);
-  // Keyboard & remote TV
-  document.addEventListener('keydown', e=>{
-    if(e.keyCode===13||e.keyCode===32||e.keyCode===179) aktifkanAudio();
-  });
-  if(overlay.style.display !== 'none') overlay.focus();
+// Aktifkan dengan keyboard juga
+document.addEventListener('keydown', e=>{
+  if(e.keyCode===13||e.keyCode===32||e.keyCode===179) aktifkanAudio();
 });
+
+// Cek sesi sebelumnya saat halaman load
+window.onload = ()=>{ cekAudioUnlock(); };
 
 function toggleBelOtomatis(){
   belOtomatis = !belOtomatis;
