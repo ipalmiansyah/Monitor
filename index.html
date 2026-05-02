@@ -420,7 +420,21 @@ setInterval(()=>{
 function cekKgiSesi(jm,je,hr,tgl){
   for(const k of dIstirahat){if(k.hari===hr&&k.jamMulai===jm&&k.jamSelesai===je)return{tipe:'istirahat',ket:k.keterangan};}
   for(const k of dRutin){if(k.hari===hr&&k.jamMulai===jm&&k.jamSelesai===je)return{tipe:'rutin',ket:k.keterangan};}
-  for(const k of dInsidental){if(k.tanggal===tgl&&k.status!=='BATAL'&&k.jamMulai===jm&&k.jamSelesai===je)return{tipe:'insidental',ket:k.keterangan};}
+  // Hanya insidental semua guru yang jadi bar penuh
+  for(const k of dInsidental){
+    if(k.tanggal===tgl&&k.status!=='BATAL'&&k.jamMulai===jm&&k.jamSelesai===je){
+      if(!k.berlakuUntuk||k.berlakuUntuk==='semua') return{tipe:'insidental',ket:k.keterangan};
+    }
+  }
+  return null;
+}
+
+// Cek apakah guru tertentu punya kegiatan di jam ini
+function cekKgiGuru(namaGuru,jm,je,tgl){
+  for(const k of dInsidental){
+    if(k.tanggal===tgl&&k.status!=='BATAL'&&k.jamMulai===jm&&k.jamSelesai===je&&k.berlakuUntuk==='tertentu'&&k.namaGuru===namaGuru)
+      return k;
+  }
   return null;
 }
 
@@ -469,6 +483,8 @@ function renderGrid(){
       const absMasuk =dAbsensi.find(a=>a.kelas===kl&&a.tanggal===tgl&&a.mode==='masuk' &&a.guru===j.namaGuru);
       const absKeluar=dAbsensi.find(a=>a.kelas===kl&&a.tanggal===tgl&&a.mode==='keluar'&&a.guru===j.namaGuru);
       const kcData=absKeluar&&isKeluarCepat(absKeluar.jam,si.e)?absKeluar:null;
+      // Cek kegiatan guru tertentu (sakit/izin/DL)
+      const kgiGuru=cekKgiGuru(j.namaGuru,si.s,si.e,tgl);
 
       // Cek guru lama kelas sama — hijau jika belum keluar atau keluar tidak cepat
       let guruLamaHijau=false;
@@ -495,11 +511,11 @@ function renderGrid(){
         if(guruLamaHijau) cls='k';
         else if(kcData) cls='kc';
         else if(absMasuk) cls='h';
-        else if(ditangani){
+        else if(kgiGuru){
+          // Kegiatan guru tertentu (sakit/izin/DL) → biru tua
           cls='mh';cntMH++;
-          const ket=ditangani.keterangan||'';
-          ketLabel=ket==='Tanpa Keterangan'?'Tanpa Ket.':ket;
-          piketMark=ditangani.guruPiket;
+          ketLabel=kgiGuru.keterangan;
+          piketMark=kgiGuru.guruPiket;
         }
         else cls='m';
       } else {
