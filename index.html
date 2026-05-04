@@ -70,10 +70,10 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 .legend{display:flex;gap:14px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
 .leg{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.55);}
 .lb{width:13px;height:13px;border-radius:3px;flex-shrink:0;}
-.lb.h{background:#16a34a;}.lb.m{background:#dc2626;}.lb.mh{background:#1d4ed8;}
-.lb.k{background:#eab308;}.lb.b{background:#60a5fa;}.lb.a{background:rgba(255,255,255,0.15);}
+.lb.h{background:#166534;}.lb.m{background:#dc2626;}.lb.mh{background:#dc2626;}
+.lb.k{background:#ca8a04;}.lb.b{background:#1d4ed8;}.lb.a{background:#dc2626;}
 .lb.u{background:#8b5cf6;}.lb.o{background:#f97316;}.lb.s{background:rgba(255,255,255,0.1);}
-.lb.kc{background:#f97316;}
+.lb.kc{background:#ea580c;}
 
 /* STATS */
 .stats{display:flex;gap:8px;flex-shrink:0;}
@@ -100,11 +100,11 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .cell{border-radius:7px;padding:6px 4px;min-height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid transparent;transition:all 0.4s;}
 .cell.h{background:#166534;border-color:#16a34a;animation:gh 3s ease-in-out infinite;}
 .cell.m{background:#dc2626;border-color:#991b1b;animation:rm 1.8s ease-in-out infinite;cursor:pointer;}
-.cell.mh{background:#1d4ed8;border-color:#1e40af;}
-.cell.k{background:rgba(234,179,8,0.25);border-color:rgba(234,179,8,0.6);}
-.cell.b{background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.3);}
-.cell.a{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);}
-.cell.kc{background:#f97316;border-color:#c2410c;}
+.cell.mh{background:#dc2626;border-color:#991b1b;animation:rm 1.8s ease-in-out infinite;}
+.cell.k{background:#ca8a04;border-color:#a16207;}
+.cell.b{background:#1d4ed8;border-color:#1e3a8a;}
+.cell.a{background:#dc2626;border-color:#991b1b;animation:rm 1.8s ease-in-out infinite;}
+.cell.kc{background:#ea580c;border-color:#c2410c;}
 .kc .cn{color:#fff;font-weight:700;}.kc .cp{color:#fed7aa;}.kc .cj{color:#fff;}
 .cell.x{background:transparent;border-color:transparent;}
 @keyframes gh{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}50%{box-shadow:0 0 10px 2px rgba(22,163,74,0.4)}}
@@ -114,10 +114,10 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .cj{font-family:var(--mono);font-size:7px;margin-top:2px;}
 .h .cn{color:#4ade80;font-weight:700;}.h .cp{color:rgba(134,239,172,0.9);}.h .cj{color:#fbbf24;}
 .m .cn{color:#fff;font-weight:700;}.m .cp{color:#fecaca;}
-.mh .cn{color:#fff;font-weight:700;}.mh .cp{color:#bfdbfe;}
-.k .cn{color:#fde047;font-weight:700;}.k .cp{color:rgba(253,224,71,0.8);}
-.b .cn{color:#93c5fd;}.b .cp{color:rgba(147,197,253,0.65);}
-.a .cn{color:rgba(255,255,255,0.25);}.a .cp{color:rgba(255,255,255,0.15);}
+.mh .cn{color:#fff;font-weight:700;}.mh .cp{color:#fecaca;}
+.k .cn{color:#fff;font-weight:700;}.k .cp{color:#fef08a;}
+.b .cn{color:#fff;font-weight:700;}.b .cp{color:#bfdbfe;}
+.a .cn{color:#fff;font-weight:700;}.a .cp{color:#fecaca;}
 .handle-mark{font-size:8px;color:#93c5fd;font-weight:700;position:absolute;bottom:4px;right:5px;line-height:1;}
 
 /* BARIS KEGIATAN */
@@ -316,6 +316,26 @@ if(document.readyState==='loading'){
 }
 
 async function loadData(){
+  // Tampil dulu pakai cache localStorage supaya tidak blank
+  const cached=localStorage.getItem('monitor_cache');
+  if(cached){
+    try{
+      const c=JSON.parse(cached);
+      dJadwal=c.jadwal||DATA_JADWAL_LOKAL;
+      dAbsensi=c.absensi||[];
+      dInsidental=c.insidental||[];
+      dPenanganan=c.penanganan||[];
+      if(c.istirahat) dIstirahat=c.istirahat;
+      if(c.rutin) dRutin=c.rutin;
+      renderGrid(); // tampil langsung dari cache
+    }catch(e){}
+  } else {
+    // Tidak ada cache — tampil dengan data lokal dulu
+    dJadwal=DATA_JADWAL_LOKAL;
+    renderGrid();
+  }
+
+  // Fetch data terbaru di background
   try{
     const r=await fetch(CFG.APPS_SCRIPT_URL+'?action=getData');
     const d=await r.json();
@@ -327,7 +347,6 @@ async function loadData(){
     if(d.rutin) dRutin=d.rutin;
     if(typeof d.belOtomatis !== 'undefined'){
       belOtomatis=d.belOtomatis;
-      // Update tampilan badge
       const badge=document.getElementById('bel-badge');
       if(badge){
         badge.textContent = belOtomatis ? '🔔 Bel ON' : '🔕 Bel OFF';
@@ -338,18 +357,22 @@ async function loadData(){
     if(d.belTrigger && d.belTrigger.ts && d.belTrigger.ts !== lastBelTrigger){
       lastBelTrigger = d.belTrigger.ts;
       bunyikanBel(d.belTrigger.suara);
-      // Clear trigger di sheet
       fetch(CFG.APPS_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'clearBelTrigger'})}).catch(()=>{});
     }
+    // Simpan ke cache (kecuali absensi yang sering berubah — simpan semua)
+    try{
+      localStorage.setItem('monitor_cache', JSON.stringify({
+        jadwal:dJadwal, absensi:dAbsensi,
+        insidental:dInsidental, penanganan:dPenanganan,
+        istirahat:dIstirahat, rutin:dRutin
+      }));
+    }catch(e){}
   }catch(e){
-    dJadwal=DATA_JADWAL_LOKAL;
-    dAbsensi=[];dInsidental=[];dPenanganan=[];
+    // Gagal fetch — tetap pakai yang sudah ditampilkan
   }
-  // Update jam reload — selalu jalan walau renderGrid error
   const el=document.getElementById('last-refresh');
   if(el) el.textContent='Update: '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  cekBelOtomatis();
-  renderGrid();
+  renderGrid(); // render ulang dengan data terbaru
 }
 
 // ── CEK BEL OTOMATIS ──
@@ -506,8 +529,45 @@ function renderGrid(){
       const ditangani=dPenanganan.find(p=>p.kelas===kl&&p.tanggal===tgl&&p.jamMulai===si.s&&p.status!=='BATAL');
 
       let cls='a', ketLabel='', piketMark='';
+
+      // ── Deteksi sesi berurutan ──
+      // Cek apakah jam ini bagian dari sesi guru yang sama (berturut-turut)
+      // Kalau iya, gunakan status jam yang sedang berlangsung
+      function cekSesiSama(idxCek, arah){
+        // arah: -1 = cek ke atas (jam sebelum), +1 = cek ke bawah (jam sesudah)
+        let i=idxCek+arah;
+        while(i>=0&&i<ses.length){
+          const siX=ses[i];
+          if(cekKgiSesi(siX.s,siX.e,hr,tgl)||siX.spOnly){i+=arah;continue;}
+          const jX=jh.find(x=>x.kelas===kl&&x.jamMulai===siX.s);
+          if(!jX||jX.namaGuru!==j.namaGuru) break;
+          return siX; // ketemu jam berurutan dengan guru sama
+        }
+        return null;
+      }
+
+      // Cek apakah ada jam berurutan (sebelum atau sesudah) dengan guru sama yang berlangsung
+      function statusSesiGabungan(){
+        // Cek jam sebelumnya
+        const siPrev=cekSesiSama(idx,-1);
+        if(siPrev){
+          const stPrev=sSesi(siPrev.s,siPrev.e);
+          if(stPrev==='berlangsung') return 'berlangsung_sesi';
+        }
+        // Cek jam sesudahnya
+        const siNext=cekSesiSama(idx,+1);
+        if(siNext){
+          const stNext=sSesi(siNext.s,siNext.e);
+          if(stNext==='berlangsung') return 'berlangsung_sesi';
+        }
+        return null;
+      }
+
+      const sesiGabungan = statusSesiGabungan();
+
       if(stSesi==='akan'||stSesi==='toleransi'){
         if(kcData) cls='kc';
+        else if(sesiGabungan) cls='m'; // warna merah karena bagian sesi berlangsung
         else cls='b';
       }
       else if(stSesi==='berlangsung'){
@@ -515,7 +575,6 @@ function renderGrid(){
         else if(kcData) cls='kc';
         else if(absMasuk) cls='h';
         else if(kgiGuru){
-          // Kegiatan guru tertentu (sakit/izin/DL) → biru tua
           cls='mh';cntMH++;
           ketLabel=kgiGuru.keterangan;
           piketMark=kgiGuru.guruPiket;
@@ -524,6 +583,7 @@ function renderGrid(){
       } else {
         if(kcData) cls='kc';
         else if(absMasuk&&!absKeluar) cls='h';
+        else if(sesiGabungan) cls='m'; // jam setelah berlangsung, masih satu sesi
         else cls='a';
       }
 
