@@ -72,8 +72,8 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 .lb{width:13px;height:13px;border-radius:3px;flex-shrink:0;}
 .lb.h{background:#166534;}.lb.m{background:#dc2626;}.lb.mh{background:#dc2626;}
 .lb.k{background:#ca8a04;}.lb.b{background:#1d4ed8;}.lb.a{background:#dc2626;}
-.lb.u{background:#8b5cf6;}.lb.o{background:#f97316;}.lb.s{background:rgba(255,255,255,0.1);}
-.lb.kc{background:#ea580c;}
+.lb.dt{background:#7f1d1d;}.lb.s{background:rgba(255,255,255,0.15);}
+.lb.u{background:#8b5cf6;}.lb.o{background:#f97316;}.lb.kc{background:#ea580c;}
 
 /* STATS */
 .stats{display:flex;gap:8px;flex-shrink:0;}
@@ -104,6 +104,8 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .cell.k{background:#ca8a04;border-color:#a16207;}
 .cell.b{background:#1d4ed8;border-color:#1e3a8a;}
 .cell.a{background:#dc2626;border-color:#991b1b;animation:rm 1.8s ease-in-out infinite;}
+.cell.dt{background:#7f1d1d;border-color:#991b1b;} /* ditangani - merah tua */
+.cell.s{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.18);} /* selesai kosong - abu lebih terlihat */
 .cell.kc{background:#ea580c;border-color:#c2410c;}
 .kc .cn{color:#fff;font-weight:700;}.kc .cp{color:#fed7aa;}.kc .cj{color:#fff;}
 .cell.x{background:transparent;border-color:transparent;}
@@ -118,6 +120,8 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .k .cn{color:#fff;font-weight:700;}.k .cp{color:#fef08a;}
 .b .cn{color:#fff;font-weight:700;}.b .cp{color:#bfdbfe;}
 .a .cn{color:#fff;font-weight:700;}.a .cp{color:#fecaca;}
+.dt .cn{color:#fca5a5;font-weight:700;}.dt .cp{color:rgba(252,165,165,0.7);}
+.s .cn{color:rgba(255,255,255,0.35);}.s .cp{color:rgba(255,255,255,0.2);}
 .handle-mark{font-size:8px;color:#93c5fd;font-weight:700;position:absolute;bottom:4px;right:5px;line-height:1;}
 
 /* BARIS KEGIATAN */
@@ -567,13 +571,14 @@ function renderGrid(){
 
       if(stSesi==='akan'||stSesi==='toleransi'){
         if(kcData) cls='kc';
-        else if(sesiGabungan) cls='m'; // warna merah karena bagian sesi berlangsung
+        else if(sesiGabungan) cls='m';
         else cls='b';
       }
       else if(stSesi==='berlangsung'){
         if(guruLamaHijau) cls='k';
         else if(kcData) cls='kc';
         else if(absMasuk) cls='h';
+        else if(ditangani) cls='dt'; // ditangani — merah tua
         else if(kgiGuru){
           cls='mh';cntMH++;
           ketLabel=kgiGuru.keterangan;
@@ -581,10 +586,12 @@ function renderGrid(){
         }
         else cls='m';
       } else {
-        if(kcData) cls='kc';
-        else if(absMasuk&&!absKeluar) cls='h';
-        else if(sesiGabungan) cls='m'; // jam setelah berlangsung, masih satu sesi
-        else cls='a';
+        // Jam sudah selesai
+        if(kcData) cls='kc';              // keluar cepat → tetap orange
+        else if(absMasuk&&!absKeluar) cls='h'; // masih di kelas → hijau
+        else if(ditangani) cls='dt';      // ditangani → merah tua
+        else if(sesiGabungan) cls='m';    // bagian sesi berlangsung
+        else cls='s';                     // kosong/berlalu → abu-abu
       }
 
       // Hitung counter
