@@ -647,25 +647,34 @@ setInterval(cekBelOtomatis, 15000); // cek bel tiap 15 detik
 // ── AUTO SCALE: muat seluruh monitor dalam 1 layar tanpa scroll ──
 function applyScale(){
   const root=document.getElementById('scale-root');
+  const tblWrap=document.querySelector('.tbl-wrap');
   if(!root) return;
-  // Reset dulu supaya bisa ukur natural size
-  root.style.transform='';
-  root.style.width='100vw';
-  root.style.height='100vh';
   const W=window.innerWidth;
   const H=window.innerHeight;
-  const cW=root.scrollWidth;
-  const cH=root.scrollHeight;
-  const scale=Math.min(W/cW, H/cH, 1); // max scale 1 (tidak perbesar)
-  root.style.transform=`scale(${scale})`;
-  root.style.transformOrigin='top left';
-  root.style.width=(W/scale)+'px';
-  root.style.height=(H/scale)+'px';
+
+  if(H>=550){
+    // Mode scale — Smart TV & monitor besar
+    root.style.transform='';
+    root.style.width='100vw';
+    root.style.height='100vh';
+    if(tblWrap) tblWrap.style.overflow='hidden';
+    const cW=root.scrollWidth;
+    const cH=root.scrollHeight;
+    const scale=Math.min(W/cW, H/cH, 1);
+    root.style.transform=`scale(${scale})`;
+    root.style.transformOrigin='top left';
+    root.style.width=(W/scale)+'px';
+    root.style.height=(H/scale)+'px';
+  } else {
+    // Mode scroll — layar kecil (HP/tablet)
+    root.style.transform='';
+    root.style.width='';
+    root.style.height='';
+    if(tblWrap) tblWrap.style.overflow='auto';
+  }
 }
-// Jalankan setelah render dan saat resize
 setTimeout(applyScale, 300);
 window.addEventListener('resize', applyScale);
-// Re-apply setelah data load
 const _origRenderGrid=renderGrid;
 renderGrid=function(){_origRenderGrid.apply(this,arguments);setTimeout(applyScale,100);};
 </script>
