@@ -95,11 +95,11 @@ thead th{position:sticky;top:0;z-index:10;background:#1e293b;padding:9px 6px;fon
 tbody{height:100%;}
 tbody tr{height:1%;}
 tbody td{padding:3px 3px;vertical-align:middle;}
-thead th:first-child{text-align:center;padding-right:4px;min-width:24px;width:28px;}thead th:nth-child(2){min-width:70px;width:75px;}
+thead th:first-child{text-align:center;padding:4px;min-width:24px;width:28px;}thead th:nth-child(2){min-width:70px;width:75px;text-align:center;}
 tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);}
 tbody tr:hover{background:rgba(255,255,255,0.02);}
 td{padding:5px 4px;text-align:center;vertical-align:middle;}
-td.sesi{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.4);text-align:right;padding-right:5px;white-space:nowrap;line-height:1.7;background:rgba(255,255,255,0.02);width:75px;max-width:80px;}
+td.sesi{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.4);text-align:center;padding:0 4px;white-space:nowrap;line-height:1.9;background:rgba(255,255,255,0.02);width:75px;max-width:80px;}
 td.sesi.aktif{color:#4ade80;font-weight:700;}
 
 /* SEL */
@@ -526,7 +526,7 @@ function renderGrid(tglOverride){
       // Istirahat gunakan class ist untuk warna biru terang
       const stBaris=sSesi(si.s,si.e);
       const clsIst=kgiF.tipe==='istirahat'?(stBaris==='selesai'?'s':'ist'):(kgiF.tipe==='rutin'?'rutin':'insidental');
-      html+=`<tr><td class="sesi" style="color:rgba(255,255,255,0.15);font-size:8px;">—</td><td class="sesi">${si.s}<br>${si.e}</td><td colspan="${kls.length}"><div class="kgi-bar ${clsIst}">${ic} ${kgiF.ket}</div></td></tr>`;
+      html+=`<tr><td class="sesi" style="color:rgba(255,255,255,0.15);font-size:8px;">—</td><td class="sesi">${si.s.replace(':','.')}-${si.e.replace(':','.')}</td><td colspan="${kls.length}"><div class="kgi-bar ${clsIst}">${ic} ${kgiF.ket}</div></td></tr>`;
       return;
     }
     if(si.spOnly) return;
@@ -534,8 +534,8 @@ function renderGrid(tglOverride){
     nomorSesi++;
     const stSesi=modeHistori?'selesai':sSesi(si.s,si.e);
     html+=`<tr>
-      <td class="sesi${stSesi==='berlangsung'?' aktif':''}" style="font-size:11px;font-weight:900;color:${stSesi==='berlangsung'?'#4ade80':'rgba(255,255,255,0.3)'};">${nomorSesi}</td>
-      <td class="sesi${stSesi==='berlangsung'?' aktif':''}">${si.s}<br>${si.e}</td>`;
+      <td class="sesi${stSesi==='berlangsung'?' aktif':''}" style="font-size:11px;font-weight:900;text-align:center;color:${stSesi==='berlangsung'?'#4ade80':'rgba(255,255,255,0.3)'};">${nomorSesi}</td>
+      <td class="sesi${stSesi==='berlangsung'?' aktif':''}">${si.s.replace(':','.')}-${si.e.replace(':','.')}</td>`;
 
     kls.forEach(kl=>{
       const j=jh.find(x=>x.kelas===kl&&x.jamMulai===si.s);
