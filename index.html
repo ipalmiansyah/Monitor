@@ -43,7 +43,7 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 /* AUTO SCALE WRAPPER */
 #scale-root{transform-origin:top left;}
 
-.outer{min-height:100vh;display:flex;flex-direction:column;padding:8px 10px 6px;gap:6px;}
+.outer{min-height:100vh;display:flex;flex-direction:column;padding:12px 18px 10px;gap:8px;}
 
 /* OVERLAY AKTIFKAN BEL */
 .bel-overlay{position:fixed;inset:0;z-index:999;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;}
@@ -87,14 +87,11 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 .stat.mh{background:rgba(251,113,133,0.15);color:#fb7185;border:1px solid rgba(251,113,133,0.3);}
 
 /* TABLE */
-.tbl-wrap{flex:1;overflow:auto;border-radius:12px;min-height:0;display:flex;flex-direction:column;}
+.tbl-wrap{flex:1;overflow:auto;border-radius:12px;min-height:0;}
 .tbl-wrap::-webkit-scrollbar{width:3px;height:3px;}
 .tbl-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px;}
-table{border-collapse:collapse;width:100%;min-width:700px;height:100%;}
+table{border-collapse:collapse;width:100%;min-width:700px;}
 thead th{position:sticky;top:0;z-index:10;background:#1e293b;padding:9px 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:rgba(255,255,255,0.55);border-bottom:1px solid rgba(255,255,255,0.08);text-align:center;}
-tbody{height:100%;}
-tbody tr{height:1%;}
-tbody td{padding:3px 3px;vertical-align:middle;}
 thead th:first-child{text-align:right;padding-right:12px;min-width:82px;}
 tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);}
 tbody tr:hover{background:rgba(255,255,255,0.02);}
