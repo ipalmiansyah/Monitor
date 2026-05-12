@@ -405,9 +405,9 @@ function cekBelOtomatis(){
 
   const events=[];
 
-  // Alarm 07:15 — hanya Senin, Jumat, Sabtu, bunyi 2x
+  // Alarm 07:15 — hanya Senin, Jumat, Sabtu, bunyi 1x
   if(['Senin','Jumat','Sabtu'].includes(hr)){
-    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi', ulang:2});
+    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi', ulang:1});
   }
 
   // Jam pertama pagi
@@ -450,8 +450,8 @@ function cekBelOtomatis(){
       if(ev.ulang && ev.ulang>1){
         // Bunyi pertama
         bunyikanBel(ev.suara);
-        // Bunyi kedua setelah jeda sesuai durasi audio (estimasi 8 detik)
-        setTimeout(()=>bunyikanBel(ev.suara), 9000);
+        // Bunyi kedua setelah jeda sesuai durasi audio (estimasi 60 detik)
+        setTimeout(()=>bunyikanBel(ev.suara), 60000);
       } else {
         bunyikanBel(ev.suara);
       }
