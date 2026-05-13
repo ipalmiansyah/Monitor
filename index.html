@@ -407,7 +407,7 @@ function cekBelOtomatis(){
 
   // Alarm 07:15 — hanya Senin, Jumat, Sabtu, bunyi 1x
   if(['Senin','Jumat','Sabtu'].includes(hr)){
-    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi', ulang:1});
+    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi'});
   }
 
   // Jam pertama pagi
