@@ -447,14 +447,7 @@ function cekBelOtomatis(){
     const selisih=Math.abs(n-ev.menit);
     if(selisih<=1 && !belDimainkan[tgl+'-'+ev.id]){
       belDimainkan[tgl+'-'+ev.id]=true;
-      if(ev.ulang && ev.ulang>1){
-        // Bunyi pertama
-        bunyikanBel(ev.suara);
-        // Bunyi kedua setelah jeda sesuai durasi audio (estimasi 8 detik)
-        setTimeout(()=>bunyikanBel(ev.suara), 9000);
-      } else {
-        bunyikanBel(ev.suara);
-      }
+      bunyikanBel(ev.suara);
       // Kirim trigger ke sheet
       fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
     }
