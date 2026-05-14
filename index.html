@@ -43,7 +43,7 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 /* AUTO SCALE WRAPPER */
 #scale-root{transform-origin:top left;}
 
-.outer{min-height:100vh;display:flex;flex-direction:column;padding:12px 18px 10px;gap:8px;}
+.outer{min-height:100vh;display:flex;flex-direction:column;padding:8px 10px 6px;gap:6px;}
 
 /* OVERLAY AKTIFKAN BEL */
 .bel-overlay{position:fixed;inset:0;z-index:999;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;}
@@ -87,16 +87,19 @@ body{font-family:var(--font);background:var(--bg);color:white;}
 .stat.mh{background:rgba(251,113,133,0.15);color:#fb7185;border:1px solid rgba(251,113,133,0.3);}
 
 /* TABLE */
-.tbl-wrap{flex:1;overflow:auto;border-radius:12px;min-height:0;}
+.tbl-wrap{flex:1;overflow:auto;border-radius:12px;min-height:0;display:flex;flex-direction:column;}
 .tbl-wrap::-webkit-scrollbar{width:3px;height:3px;}
 .tbl-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px;}
-table{border-collapse:collapse;width:100%;min-width:700px;}
+table{border-collapse:collapse;width:100%;min-width:700px;height:100%;}
 thead th{position:sticky;top:0;z-index:10;background:#1e293b;padding:9px 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:rgba(255,255,255,0.55);border-bottom:1px solid rgba(255,255,255,0.08);text-align:center;}
-thead th:first-child{text-align:right;padding-right:12px;min-width:82px;}
+tbody{height:100%;}
+tbody tr{height:1%;}
+tbody td{padding:3px 3px;vertical-align:middle;}
+thead th:first-child{text-align:center;padding:4px;min-width:24px;width:28px;}thead th:nth-child(2){min-width:70px;width:75px;text-align:center;}
 tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);}
 tbody tr:hover{background:rgba(255,255,255,0.02);}
 td{padding:5px 4px;text-align:center;vertical-align:middle;}
-td.sesi{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.4);text-align:right;padding-right:12px;white-space:nowrap;line-height:1.7;background:rgba(255,255,255,0.02);}
+td.sesi{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.4);text-align:center;padding:0 4px;white-space:nowrap;line-height:1.9;background:rgba(255,255,255,0.02);width:75px;max-width:80px;}
 td.sesi.aktif{color:#4ade80;font-weight:700;}
 
 /* SEL */
@@ -194,7 +197,7 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 <script>
 // ══════════════════════════════════════════
 const CFG = {
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxxXegaUXV4Bl6eXFqFEYae3qVWzDaswwJ62XONdwcGeXK2-pLJ3h5fLxm6lMkJTzCHkw/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyB2ESAAwcPW2vufabMbbLGkEEcp-_YksDtU_9QCW7_e5tXzxQA98TWfcR8HrqtiRaoJw/exec',
   NAMA_SEKOLAH: 'SMP Negeri 05 Sarolangun',
 };
 // ══════════════════════════════════════════
@@ -405,9 +408,9 @@ function cekBelOtomatis(){
 
   const events=[];
 
-  // Alarm 07:15 — hanya Senin, Jumat, Sabtu, bunyi 1x
+  // Alarm 07:15 — hanya Senin, Jumat, Sabtu, bunyi 2x
   if(['Senin','Jumat','Sabtu'].includes(hr)){
-    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi'});
+    events.push({menit:pJam('07:15'), suara:SUARA.ALARM, id:'alarm-pagi', ulang:2});
   }
 
   // Jam pertama pagi
@@ -450,8 +453,8 @@ function cekBelOtomatis(){
       if(ev.ulang && ev.ulang>1){
         // Bunyi pertama
         bunyikanBel(ev.suara);
-        // Bunyi kedua setelah jeda sesuai durasi audio (estimasi 60 detik)
-        setTimeout(()=>bunyikanBel(ev.suara), 60000);
+        // Bunyi kedua setelah jeda sesuai durasi audio (estimasi 8 detik)
+        setTimeout(()=>bunyikanBel(ev.suara), 9000);
       } else {
         bunyikanBel(ev.suara);
       }
@@ -523,7 +526,7 @@ function renderGrid(tglOverride){
       // Istirahat gunakan class ist untuk warna biru terang
       const stBaris=sSesi(si.s,si.e);
       const clsIst=kgiF.tipe==='istirahat'?(stBaris==='selesai'?'s':'ist'):(kgiF.tipe==='rutin'?'rutin':'insidental');
-      html+=`<tr><td class="sesi" style="color:rgba(255,255,255,0.15);font-size:8px;">—</td><td class="sesi">${si.s}<br>${si.e}</td><td colspan="${kls.length}"><div class="kgi-bar ${clsIst}">${ic} ${kgiF.ket}</div></td></tr>`;
+      html+=`<tr><td class="sesi" style="color:rgba(255,255,255,0.15);font-size:8px;">—</td><td class="sesi">${si.s.replace(':','.')}-${si.e.replace(':','.')}</td><td colspan="${kls.length}"><div class="kgi-bar ${clsIst}">${ic} ${kgiF.ket}</div></td></tr>`;
       return;
     }
     if(si.spOnly) return;
@@ -531,8 +534,8 @@ function renderGrid(tglOverride){
     nomorSesi++;
     const stSesi=modeHistori?'selesai':sSesi(si.s,si.e);
     html+=`<tr>
-      <td class="sesi${stSesi==='berlangsung'?' aktif':''}" style="font-size:11px;font-weight:900;color:${stSesi==='berlangsung'?'#4ade80':'rgba(255,255,255,0.3)'};">${nomorSesi}</td>
-      <td class="sesi${stSesi==='berlangsung'?' aktif':''}">${si.s}<br>${si.e}</td>`;
+      <td class="sesi${stSesi==='berlangsung'?' aktif':''}" style="font-size:11px;font-weight:900;text-align:center;color:${stSesi==='berlangsung'?'#4ade80':'rgba(255,255,255,0.3)'};">${nomorSesi}</td>
+      <td class="sesi${stSesi==='berlangsung'?' aktif':''}">${si.s.replace(':','.')}-${si.e.replace(':','.')}</td>`;
 
     kls.forEach(kl=>{
       const j=jh.find(x=>x.kelas===kl&&x.jamMulai===si.s);
