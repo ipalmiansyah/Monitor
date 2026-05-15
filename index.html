@@ -132,6 +132,8 @@ td.sesi.aktif{color:#4ade80;font-weight:700;}
 .kgi-bar{padding:7px 10px;font-size:11px;font-weight:800;text-align:center;border-radius:6px;margin:2px 4px;}
 .kgi-bar.rutin{background:rgba(139,92,246,0.2);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3);}
 .kgi-bar.insidental{background:rgba(249,115,22,0.15);color:#fdba74;border:1px solid rgba(249,115,22,0.3);}
+.cell.ci{background:#0891b2;border-color:#0e7490;} .ci .cn{color:#fff;font-weight:700;} .ci .cp{color:#cffafe;} .ci .cj{color:#e0f2fe;font-size:10px;}
+.cell.cr{background:#4f46e5;border-color:#3730a3;} .cr .cn{color:#fff;font-weight:700;} .cr .cp{color:#e0e7ff;} .cr .cj{color:#c7d2fe;font-size:10px;}
 .kgi-bar.istirahat{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1);}
 
 /* FOOTER */
@@ -460,11 +462,10 @@ setInterval(()=>{
 }, 60000);
 
 function cekKgiSesi(jm,je,hr,tgl){
-  for(const k of dIstirahat){if(k.hari===hr&&k.jamMulai===jm&&k.jamSelesai===je)return{tipe:'istirahat',ket:k.keterangan};}
-  for(const k of dRutin){if(k.hari===hr&&k.jamMulai===jm&&k.jamSelesai===je)return{tipe:'rutin',ket:k.keterangan};}
-  // Hanya insidental semua guru yang jadi bar penuh
+  for(const k of dIstirahat){if(k.hari===hr&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je))return{tipe:'istirahat',ket:k.keterangan};}
+  for(const k of dRutin){if(k.hari===hr&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je))return{tipe:'rutin',ket:k.keterangan};}
   for(const k of dInsidental){
-    if(k.tanggal===tgl&&k.status!=='BATAL'&&k.jamMulai===jm&&k.jamSelesai===je){
+    if(k.tanggal===tgl&&k.status!=='BATAL'&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je)){
       if(!k.berlakuUntuk||k.berlakuUntuk==='semua') return{tipe:'insidental',ket:k.keterangan};
     }
   }
@@ -474,7 +475,7 @@ function cekKgiSesi(jm,je,hr,tgl){
 // Cek apakah guru tertentu punya kegiatan di jam ini
 function cekKgiGuru(namaGuru,jm,je,tgl){
   for(const k of dInsidental){
-    if(k.tanggal===tgl&&k.status!=='BATAL'&&k.jamMulai===jm&&k.jamSelesai===je&&k.berlakuUntuk==='tertentu'&&k.namaGuru===namaGuru)
+    if(k.tanggal===tgl&&k.status!=='BATAL'&&pJam(k.jamMulai)<=pJam(jm)&&pJam(k.jamSelesai)>=pJam(je)&&k.berlakuUntuk==='tertentu'&&k.namaGuru===namaGuru)
       return k;
   }
   return null;
@@ -490,7 +491,7 @@ function renderGrid(tglOverride){
   const jh=dJadwal.filter(j=>j.hari===hr);
   const klMap={}, sesiMap={};
   jh.forEach(j=>{klMap[j.kelas]=1; sesiMap[j.jamMulai+'-'+j.jamSelesai]={s:j.jamMulai,e:j.jamSelesai};});
-  [...dIstirahat.filter(k=>k.hari===hr),...dRutin.filter(k=>k.hari===hr),...dInsidental.filter(k=>k.tanggal===tgl&&k.status!=='BATAL')]
+  [...dIstirahat.filter(k=>k.hari===hr),...dRutin.filter(k=>k.hari===hr),...dInsidental.filter(k=>k.tanggal===tgl&&k.status!=='BATAL'&&(k.berlakuUntuk||'semua')==='semua')]
     .forEach(k=>{const key=k.jamMulai+'-'+k.jamSelesai;if(!sesiMap[key])sesiMap[key]={s:k.jamMulai,e:k.jamSelesai,spOnly:true};});
 
   const kls=Object.keys(klMap).sort(sortKelas);
@@ -599,20 +600,31 @@ function renderGrid(tglOverride){
         if(guruLamaHijau) cls='k';
         else if(kcData) cls='kc';
         else if(absMasuk) cls='h';
-        else if(ditangani) cls='dt'; // ditangani — merah tua
-        else if(kgiGuru){
-          cls='mh';cntMH++;
-          ketLabel=kgiGuru.keterangan;
-          piketMark=kgiGuru.guruPiket;
-        }
+        else if(ditangani) cls='dt';
+        else if(kgiGuru){ cls='mh'; cntMH++; ketLabel=kgiGuru.keterangan; piketMark=kgiGuru.guruPiket; }
         else cls='m';
       } else {
-        // Jam sudah selesai
-        if(kcData) cls='kc';              // keluar cepat → tetap orange
-        else if(absMasuk&&!absKeluar) cls='h'; // masih di kelas → hijau
-        else if(ditangani) cls='dt';      // ditangani → merah tua
-        else if(sesiGabungan) cls='m';    // bagian sesi berlangsung
-        else cls='s';                     // kosong/berlalu → abu-abu
+        if(kcData) cls='kc';
+        else if(absMasuk&&!absKeluar) cls='h';
+        else if(ditangani) cls='dt';
+        else if(sesiGabungan) cls='m';
+        else cls='s';
+      }
+
+      // Override insidental tertentu (teal) — prioritas tinggi
+      if(kgiGuru){
+        cls='ci';
+        const ketS=kgiGuru.keterangan==='Sakit'?'S':kgiGuru.keterangan==='Izin'?'I':'DL';
+        const tgn=dPenanganan.find(p=>p.kelas===kl&&p.tanggal===tgl&&pJam(p.jamMulai)<=pJam(si.s)&&pJam(p.jamSelesai)>=pJam(si.e)&&p.status!=='BATAL');
+        ketLabel=`(${ketS})${tgn?' '+tgn.guruPiket.split(',')[0].trim().split(' ').pop():''}`;
+        piketMark='';
+      }
+      // Override insidental semua/rapat (indigo)
+      const insSemuaJam=dInsidental.find(k=>k.tanggal===tgl&&k.status!=='BATAL'&&(k.berlakuUntuk||'semua')==='semua'&&pJam(k.jamMulai)===pJam(si.s)&&pJam(k.jamSelesai)===pJam(si.e));
+      if(insSemuaJam&&!kgiGuru){
+        cls='cr';
+        ketLabel=insSemuaJam.keterangan;
+        piketMark='';
       }
 
       // Hitung counter — per kelas, hanya untuk jam yang sedang berlangsung/akan mulai
