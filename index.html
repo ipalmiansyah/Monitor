@@ -293,7 +293,7 @@ function playAudio(namaFile){
 }
 
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
-const pJam=s=>{const[h,m]=s.split(':').map(Number);return h*60+m;};
+const pJam=s=>{const n=(s||'00:00').replace('.',':');const[h,m]=n.split(':').map(Number);return h*60+(m||0);};
 const hariIni=()=>new Date().toLocaleDateString('id-ID',{weekday:'long'});
 const tglStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const tglStrLokal=(tgl)=>{const d=new Date(tgl+'T00:00:00');return d.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});};
