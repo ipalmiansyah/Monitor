@@ -641,11 +641,22 @@ function renderGrid(tglOverride){
 
       // Bangun isi sel
       let isi='';
-      if(ketLabel) isi+=`<div class="cj" style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:8px;color:#bfdbfe;margin-bottom:2px;">${ketLabel}</div>`;
-      isi+=`<div class="cn">${j.kodeTampil||j.inisial}</div>`;
-      if(cls==='kc') isi+=`<div class="cj">⚡ Keluar Cepat</div>`;
-      if(cls==='h'&&absMasuk&&!absKeluar&&stSesi==='selesai') isi+=`<div class="cj">▶ di kelas</div>`;
-      if(piketMark) isi+=`<div class="handle-mark">✓${piketMark}</div>`;
+      // Insidental: kode guru + (S/I/DL) di baris sama, inisial piket di pojok kanan bawah
+      if(cls==='ci'){
+        const tgnInisial=ketLabel.replace(/^\(.\)/,'').trim();
+        const ketSingkat=ketLabel.match(/\(.\)/)?ketLabel.match(/\(.\)/)[0]:'';
+        isi+=`<div class="cn">${j.kodeTampil||j.inisial} ${ketSingkat}</div>`;
+        if(tgnInisial) isi+=`<div class="cj" style="text-align:right">${tgnInisial}</div>`;
+      } else if(cls==='cr'){
+        isi+=`<div class="cn">${j.kodeTampil||j.inisial}</div>`;
+        if(ketLabel) isi+=`<div class="cj">${ketLabel}</div>`;
+      } else {
+        if(ketLabel) isi+=`<div class="cj" style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:8px;color:#bfdbfe;margin-bottom:2px;">${ketLabel}</div>`;
+        isi+=`<div class="cn">${j.kodeTampil||j.inisial}</div>`;
+        if(cls==='kc') isi+=`<div class="cj">⚡ Keluar Cepat</div>`;
+        if(cls==='h'&&absMasuk&&!absKeluar&&stSesi==='selesai') isi+=`<div class="cj">▶ di kelas</div>`;
+        if(piketMark) isi+=`<div class="handle-mark">✓${piketMark}</div>`;
+      }
 
       html+=`<td><div class="cell ${cls}" style="position:relative;">${isi}</div></td>`;
     });
