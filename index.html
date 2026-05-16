@@ -464,8 +464,9 @@ setInterval(()=>{
 function cekKgiSesi(jm,je,hr,tgl){
   for(const k of dIstirahat){if(k.hari===hr&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je))return{tipe:'istirahat',ket:k.keterangan};}
   for(const k of dRutin){if(k.hari===hr&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je))return{tipe:'rutin',ket:k.keterangan};}
+  const tglDMY2=tgl.includes('-')&&tgl.split('-').length===3?tgl.split('-')[2]+'/'+tgl.split('-')[1]+'/'+tgl.split('-')[0]:tgl;
   for(const k of dInsidental){
-    if(k.tanggal===tgl&&k.status!=='BATAL'&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je)){
+    if((k.tanggal===tgl||k.tanggal===tglDMY2)&&k.status!=='BATAL'&&pJam(k.jamMulai)===pJam(jm)&&pJam(k.jamSelesai)===pJam(je)){
       if(!k.berlakuUntuk||k.berlakuUntuk==='semua') return{tipe:'insidental',ket:k.keterangan};
     }
   }
@@ -474,8 +475,10 @@ function cekKgiSesi(jm,je,hr,tgl){
 
 // Cek apakah guru tertentu punya kegiatan di jam ini
 function cekKgiGuru(namaGuru,jm,je,tgl){
+  // Konversi tgl yyyy-MM-dd ke dd/MM/yyyy untuk cocok dengan format dInsidental
+  const tglDMY=tgl.includes('-')&&tgl.split('-').length===3?tgl.split('-')[2]+'/'+tgl.split('-')[1]+'/'+tgl.split('-')[0]:tgl;
   for(const k of dInsidental){
-    if(k.tanggal===tgl&&k.status!=='BATAL'&&pJam(k.jamMulai)<=pJam(jm)&&pJam(k.jamSelesai)>=pJam(je)&&k.berlakuUntuk==='tertentu'&&k.namaGuru===namaGuru)
+    if((k.tanggal===tgl||k.tanggal===tglDMY)&&k.status!=='BATAL'&&pJam(k.jamMulai)<=pJam(jm)&&pJam(k.jamSelesai)>=pJam(je)&&k.berlakuUntuk==='tertentu'&&k.namaGuru===namaGuru)
       return k;
   }
   return null;
@@ -620,7 +623,8 @@ function renderGrid(tglOverride){
         piketMark='';
       }
       // Override insidental semua/rapat (indigo)
-      const insSemuaJam=dInsidental.find(k=>k.tanggal===tgl&&k.status!=='BATAL'&&(k.berlakuUntuk||'semua')==='semua'&&pJam(k.jamMulai)===pJam(si.s)&&pJam(k.jamSelesai)===pJam(si.e));
+      const tglDMY3=tgl.includes('-')&&tgl.split('-').length===3?tgl.split('-')[2]+'/'+tgl.split('-')[1]+'/'+tgl.split('-')[0]:tgl;
+      const insSemuaJam=dInsidental.find(k=>(k.tanggal===tgl||k.tanggal===tglDMY3)&&k.status!=='BATAL'&&(k.berlakuUntuk||'semua')==='semua'&&pJam(k.jamMulai)===pJam(si.s)&&pJam(k.jamSelesai)===pJam(si.e));
       if(insSemuaJam&&!kgiGuru){
         cls='cr';
         ketLabel=insSemuaJam.keterangan;
