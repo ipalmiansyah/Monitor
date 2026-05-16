@@ -618,8 +618,9 @@ function renderGrid(tglOverride){
       if(kgiGuru){
         cls='ci';
         const ketS=kgiGuru.keterangan==='Sakit'?'S':kgiGuru.keterangan==='Izin'?'I':'DL';
-        const tgn=dPenanganan.find(p=>p.kelas===kl&&p.tanggal===tgl&&pJam(p.jamMulai)<=pJam(si.s)&&pJam(p.jamSelesai)>=pJam(si.e)&&p.status!=='BATAL');
-        ketLabel=`(${ketS})${tgn?' '+tgn.guruPiket.split(',')[0].trim().split(' ').pop():''}`;
+        // Guru piket yang input = yang menangani (otomatis dari field guruPiket di insidental)
+        const piketInisial=kgiGuru.guruPiket||'';
+        ketLabel=`(${ketS})${piketInisial?' '+piketInisial:''}`;
         piketMark='';
       }
       // Override insidental semua/rapat (indigo)
