@@ -239,9 +239,43 @@ function preloadAudio(){
       a.preload = 'auto';
       a.load();
       audioCache[namaFile] = a;
-      console.log('[PRELOAD] ' + namaFile);
-    }catch(e){ console.log('[PRELOAD] Gagal: ' + namaFile); }
+    }catch(e){}
   });
+}
+
+// Fallback: generate suara bel via Web Audio API (tidak perlu download)
+// Dipakai kalau MP3 gagal atau lambat
+const BEL_SYNTH = {
+  [SUARA.MASUK_PAGI]:     [{f:880,d:0.15},{f:0,d:0.05},{f:880,d:0.15},{f:0,d:0.05},{f:1320,d:0.4}],
+  [SUARA.GANTI_JAM]:      [{f:880,d:0.15},{f:0,d:0.05},{f:880,d:0.15}],
+  [SUARA.ISTIRAHAT]:      [{f:660,d:0.2},{f:0,d:0.05},{f:880,d:0.2},{f:0,d:0.05},{f:1100,d:0.5}],
+  [SUARA.MASUK_STLH]:     [{f:1100,d:0.15},{f:0,d:0.05},{f:1100,d:0.15},{f:0,d:0.05},{f:880,d:0.4}],
+  [SUARA.PULANG_SENINJUM]:[{f:880,d:0.3},{f:0,d:0.1},{f:660,d:0.3},{f:0,d:0.1},{f:440,d:0.6}],
+  [SUARA.PULANG_SABTU]:   [{f:880,d:0.3},{f:0,d:0.1},{f:660,d:0.3},{f:0,d:0.1},{f:440,d:0.6}],
+  [SUARA.ALARM]:          [{f:1320,d:0.1},{f:0,d:0.05},{f:1320,d:0.1},{f:0,d:0.05},{f:1320,d:0.1}],
+  [SUARA.UPACARA]:        [{f:440,d:0.5},{f:550,d:0.5},{f:660,d:0.8}],
+  [SUARA.MARS]:           [{f:660,d:0.2},{f:770,d:0.2},{f:880,d:0.4}],
+};
+
+function playBelSynth(namaFile){
+  const ctx = window.audioCtx;
+  if(!ctx) return;
+  const notes = BEL_SYNTH[namaFile] || [{f:880,d:0.3},{f:0,d:0.1},{f:880,d:0.3}];
+  let t = ctx.currentTime + 0.05;
+  notes.forEach(n=>{
+    if(n.f > 0){
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(n.f, t);
+      gain.gain.setValueAtTime(0.8, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + n.d);
+      osc.start(t); osc.stop(t + n.d);
+    }
+    t += n.d;
+  });
+  console.log('[BEL] Synth:', namaFile);
 }
 
 // window.audioUnlocked, window.audioCtx, belOtomatis sudah didefinisikan di window (script head)
@@ -295,30 +329,31 @@ function bunyikanBel(namaFile){
 
 function playAudio(namaFile){
   try{
-    // Pakai cache kalau ada, fallback ke buat baru
     let audio = audioCache[namaFile];
-    if(audio){
-      // Clone dari cache agar bisa diputar ulang
+    if(audio && audio.readyState >= 3){ // HAVE_FUTURE_DATA — sudah ter-buffer cukup
       audio.currentTime = 0;
+      const p = audio.play();
+      if(p) p.then(()=>console.log('[BEL] ✅ Cache:', namaFile))
+            .catch(e=>{
+              console.log('[BEL] Cache gagal, pakai synth:', e.message);
+              playBelSynth(namaFile);
+            });
     } else {
-      audio = new Audio(BASE_URL + namaFile);
-      audioCache[namaFile] = audio;
+      // File belum ready — langsung pakai synth
+      console.log('[BEL] File belum ready, pakai synth');
+      playBelSynth(namaFile);
+      // Tetap coba load untuk next time
+      if(!audio){
+        audio = new Audio(BASE_URL + namaFile);
+        audio.preload = 'auto';
+        audioCache[namaFile] = audio;
+        audio.load();
+      }
     }
-    audio.volume = 1.0;
-    const playPromise = audio.play();
-    if(playPromise){
-      playPromise.then(()=>{
-        console.log('[BEL] ✅ Bunyi:', namaFile);
-      }).catch(e=>{
-        console.log('[BEL] Play gagal:', e.name, e.message);
-        if(e.name==='NotAllowedError'){
-          window.audioUnlocked=false;
-          sessionStorage.removeItem('bel_unlocked');
-          document.getElementById('bel-overlay').style.display='flex';
-        }
-      });
-    }
-  }catch(e){ console.log('[BEL] Audio error:', e); }
+  }catch(e){
+    console.log('[BEL] Error, fallback synth:', e);
+    playBelSynth(namaFile);
+  }
 }
 
 const nowMin=()=>{const d=new Date();const wib=new Date(d.getTime()+7*60*60*1000);return wib.getUTCHours()*60+wib.getUTCMinutes();};
