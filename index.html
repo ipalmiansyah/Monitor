@@ -287,8 +287,9 @@ function cekAudioUnlock(){
     // (sessionStorage reset saat tab baru, ini sudah unlock di sesi ini)
     window.audioUnlocked=true;
     document.getElementById('bel-overlay').style.display='none';
-    console.log('[BEL] Sesi lanjut — tapi AudioContext belum dibuat');
-    // AudioContext akan dibuat saat bunyikanBel pertama kali dipanggil
+    console.log('[BEL] Sesi lanjut — tampilkan overlay untuk unlock audio');
+    // Tampilkan overlay kecil agar user klik untuk unlock AudioContext
+    document.getElementById('bel-overlay').style.display='flex';
   }
 }
 
@@ -312,10 +313,14 @@ function bunyikanBel(namaFile){
     document.getElementById('bel-overlay').style.display='flex';
     return;
   }
-  // Kalau AudioContext belum ada (misal dari sessionStorage) — buat dulu
+  // Kalau AudioContext belum ada — buat sekarang
   if(!window.audioCtx){
     try{
-      audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      window.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      window.audioCtx.resume();
+      // Preload audio juga kalau belum
+      if(Object.keys(audioCache).length===0) preloadAudio();
+      console.log('[BEL] AudioContext dibuat otomatis');
     }catch(e){ console.log('[BEL] Gagal buat AudioContext:',e); }
   }
   try{
