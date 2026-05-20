@@ -211,6 +211,9 @@ const DATA_RUTIN_LOKAL = [{"hari": "Senin", "jamMulai": "07:30", "jamSelesai": "
 let dJadwal=[], dAbsensi=[], dInsidental=[], dPenanganan=[];
 let dIstirahat=DATA_ISTIRAHAT_LOKAL, dRutin=DATA_RUTIN_LOKAL;
 let belOtomatis=true, lastBelTrigger='', belDimainkan={};
+// Load belDimainkan dari localStorage agar tahan refresh
+try{ const bd=localStorage.getItem('belDimainkan'); if(bd) belDimainkan=JSON.parse(bd); }catch(e){}
+function saveBelDimainkan(){ try{ localStorage.setItem('belDimainkan',JSON.stringify(belDimainkan)); }catch(e){} }
 
 // PEMETAAN BEL OTOMATIS
 const SUARA = {
@@ -375,12 +378,10 @@ async function loadData(){
     if(d.belTrigger && d.belTrigger.ts && d.belTrigger.ts !== lastBelTrigger){
       const now = Date.now();
       const tsNum = parseInt(d.belTrigger.ts)||0;
-      // Debounce: abaikan trigger > 60 detik yang lalu
+      lastBelTrigger = d.belTrigger.ts;
+      // Hanya proses trigger yang tidak lebih dari 60 detik
       if(now - tsNum < 60000){
-        lastBelTrigger = d.belTrigger.ts;
         bunyikanBel(d.belTrigger.suara);
-      } else {
-        lastBelTrigger = d.belTrigger.ts; // tandai sudah dibaca
       }
       fetch(CFG.APPS_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'clearBelTrigger'})}).catch(()=>{});
     }
@@ -449,6 +450,7 @@ function cekBelOtomatis(){
     const selisih=Math.abs(n-ev.menit);
     if(selisih<=1 && !belDimainkan[tgl+'-'+ev.id]){
       belDimainkan[tgl+'-'+ev.id]=true;
+      saveBelDimainkan();
       bunyikanBel(ev.suara);
       // Kirim trigger ke sheet
       fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
@@ -458,7 +460,8 @@ function cekBelOtomatis(){
 // Reset belDimainkan setiap hari baru
 setInterval(()=>{
   const tgl=tglStr();
-  Object.keys(belDimainkan).forEach(k=>{ if(!k.startsWith(tgl)) delete belDimainkan[k]; });
+  const keysLama = Object.keys(belDimainkan).filter(k=>!k.startsWith(tgl));
+  if(keysLama.length){ keysLama.forEach(k=>delete belDimainkan[k]); saveBelDimainkan(); }
 }, 60000);
 
 function cekKgiSesi(jm,je,hr,tgl){
@@ -770,7 +773,7 @@ loadData=async function(){
 
 loadData();
 setInterval(()=>{ if(!refreshPaused) loadData(); }, 30000);
-setInterval(cekBelOtomatis, 15000);
+setInterval(cekBelOtomatis, 5000); // 5 detik agar tidak miss window ±1 menit
 setTimeout(applyScale, 300);
 window.addEventListener('resize', applyScale);
 const _origRenderGrid=renderGrid;
