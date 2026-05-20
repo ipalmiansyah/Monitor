@@ -382,8 +382,9 @@ async function loadData(){
       // Hanya proses trigger yang tidak lebih dari 60 detik
       if(now - tsNum < 60000){
         bunyikanBel(d.belTrigger.suara);
+        // Clear trigger setelah 5 detik — beri waktu monitor lain sempat membaca
+        setTimeout(()=>fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'clearBelTrigger'})}).catch(()=>{}), 5000);
       }
-      fetch(CFG.APPS_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'clearBelTrigger'})}).catch(()=>{});
     }
     // Simpan ke cache (kecuali absensi yang sering berubah — simpan semua)
     try{
