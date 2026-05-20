@@ -27,7 +27,20 @@ function aktifkanAudio(){
     fetch(CFG.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(function(){});
   }
   console.log('[BEL] ✅ Aktif! AudioContext state:',window.audioCtx?window.audioCtx.state:'null');
-  preloadAudio(); // preload semua file audio setelah user gesture
+  // Preload audio dan tunggu sampai siap
+  preloadAudio();
+  // Cek progress loading setiap 500ms, update status
+  const checkLoaded = setInterval(()=>{
+    const keys = Object.keys(audioCache);
+    const loaded = keys.filter(k=>audioCache[k].readyState>=4).length;
+    const total = keys.length;
+    if(loaded === total && total > 0){
+      clearInterval(checkLoaded);
+      console.log('[BEL] Semua audio siap:', total, 'file');
+    } else {
+      console.log('[BEL] Loading audio:', loaded+'/'+total);
+    }
+  }, 500);
 }
 // Inisialisasi variabel global — AudioContext JANGAN dibuat di sini
 window.audioUnlocked=false;
@@ -335,7 +348,7 @@ function bunyikanBel(namaFile){
 function playAudio(namaFile){
   try{
     let audio = audioCache[namaFile];
-    if(audio && audio.readyState >= 3){ // HAVE_FUTURE_DATA — sudah ter-buffer cukup
+    if(audio && audio.readyState >= 4){ // HAVE_ENOUGH_DATA — fully loaded
       audio.currentTime = 0;
       const p = audio.play();
       if(p) p.then(()=>console.log('[BEL] ✅ Cache:', namaFile))
