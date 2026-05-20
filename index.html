@@ -27,6 +27,7 @@ function aktifkanAudio(){
     fetch(CFG.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'setBelOtomatis',status:'ON'})}).catch(function(){});
   }
   console.log('[BEL] ✅ Aktif! AudioContext state:',window.audioCtx?window.audioCtx.state:'null');
+  preloadAudio(); // preload semua file audio setelah user gesture
 }
 // Inisialisasi variabel global — AudioContext JANGAN dibuat di sini
 window.audioUnlocked=false;
@@ -228,6 +229,21 @@ const SUARA = {
   MARS:          '9. Mars SMP.mp3',
 };
 
+// Preload semua audio agar tidak terputus saat diputar
+const BASE_URL = 'https://ipalmiansyah.github.io/Monitor/';
+const audioCache = {};
+function preloadAudio(){
+  Object.values(SUARA).forEach(namaFile=>{
+    try{
+      const a = new Audio(BASE_URL + namaFile);
+      a.preload = 'auto';
+      a.load();
+      audioCache[namaFile] = a;
+      console.log('[PRELOAD] ' + namaFile);
+    }catch(e){ console.log('[PRELOAD] Gagal: ' + namaFile); }
+  });
+}
+
 // window.audioUnlocked, window.audioCtx, belOtomatis sudah didefinisikan di window (script head)
 
 function cekAudioUnlock(){
@@ -279,14 +295,22 @@ function bunyikanBel(namaFile){
 
 function playAudio(namaFile){
   try{
-    const audio=new Audio('https://ipalmiansyah.github.io/Monitor/'+namaFile);
-    audio.volume=1.0;
-    const playPromise=audio.play();
+    // Pakai cache kalau ada, fallback ke buat baru
+    let audio = audioCache[namaFile];
+    if(audio){
+      // Clone dari cache agar bisa diputar ulang
+      audio.currentTime = 0;
+    } else {
+      audio = new Audio(BASE_URL + namaFile);
+      audioCache[namaFile] = audio;
+    }
+    audio.volume = 1.0;
+    const playPromise = audio.play();
     if(playPromise){
       playPromise.then(()=>{
-        console.log('[BEL] ✅ Bunyi:',namaFile);
+        console.log('[BEL] ✅ Bunyi:', namaFile);
       }).catch(e=>{
-        console.log('[BEL] Play gagal:',e.name,e.message);
+        console.log('[BEL] Play gagal:', e.name, e.message);
         if(e.name==='NotAllowedError'){
           window.audioUnlocked=false;
           sessionStorage.removeItem('bel_unlocked');
@@ -294,7 +318,7 @@ function playAudio(namaFile){
         }
       });
     }
-  }catch(e){ console.log('[BEL] Audio error:',e); }
+  }catch(e){ console.log('[BEL] Audio error:', e); }
 }
 
 const nowMin=()=>{const d=new Date();const wib=new Date(d.getTime()+7*60*60*1000);return wib.getUTCHours()*60+wib.getUTCMinutes();};
