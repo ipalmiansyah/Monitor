@@ -224,7 +224,7 @@ const DATA_RUTIN_LOKAL = [{"hari": "Senin", "jamMulai": "07:30", "jamSelesai": "
 
 let dJadwal=[], dAbsensi=[], dInsidental=[], dPenanganan=[];
 let dIstirahat=DATA_ISTIRAHAT_LOKAL, dRutin=DATA_RUTIN_LOKAL;
-let belOtomatis=true, lastBelTrigger='', belDimainkan={};
+let belOtomatis=true, lastBelTrigger='', belDimainkan={}, sedangBunyi=false;
 // Load belDimainkan dari localStorage agar tahan refresh
 try{ const bd=localStorage.getItem('belDimainkan'); if(bd) belDimainkan=JSON.parse(bd); }catch(e){}
 function saveBelDimainkan(){ try{ localStorage.setItem('belDimainkan',JSON.stringify(belDimainkan)); }catch(e){} }
@@ -271,6 +271,7 @@ const BEL_SYNTH = {
 };
 
 function playBelSynth(namaFile){
+  sedangBunyi = true;
   const ctx = window.audioCtx;
   if(!ctx) return;
   const notes = BEL_SYNTH[namaFile] || [{f:880,d:0.3},{f:0,d:0.1},{f:880,d:0.3}];
@@ -288,6 +289,9 @@ function playBelSynth(namaFile){
     }
     t += n.d;
   });
+  // Reset flag setelah synth selesai
+  const totalDur = notes.reduce((s,n)=>s+n.d, 0);
+  setTimeout(()=>{ sedangBunyi = false; }, (totalDur + 0.1) * 1000);
   console.log('[BEL] Synth:', namaFile);
 }
 
@@ -321,6 +325,7 @@ function toggleBelOtomatis(){
 }
 
 function bunyikanBel(namaFile){
+  if(sedangBunyi){ console.log('[BEL] Sedang bunyi, skip'); return; }
   if(!window.audioUnlocked){
     console.log('[BEL] Belum unlock');
     document.getElementById('bel-overlay').style.display='flex';
@@ -350,12 +355,16 @@ function playAudio(namaFile){
     let audio = audioCache[namaFile];
     if(audio && audio.readyState >= 4){ // HAVE_ENOUGH_DATA — fully loaded
       audio.currentTime = 0;
+      sedangBunyi = true;
       const p = audio.play();
-      if(p) p.then(()=>console.log('[BEL] ✅ Cache:', namaFile))
-            .catch(e=>{
+      if(p) p.then(()=>{
+              console.log('[BEL] ✅ Cache:', namaFile);
+            }).catch(e=>{
               console.log('[BEL] Cache gagal, pakai synth:', e.message);
               playBelSynth(namaFile);
             });
+      // Reset flag setelah durasi audio selesai
+      audio.onended = () => { sedangBunyi = false; };
     } else {
       // File belum ready — langsung pakai synth
       console.log('[BEL] File belum ready, pakai synth');
@@ -524,7 +533,9 @@ function cekBelOtomatis(){
   });
 
   // Cek event yang tepat pada menit ini (±1 menit toleransi)
-  events.forEach(ev=>{
+  // Hanya bunyi 1 event per cek agar tidak overlap
+  for(const ev of events){
+    if(sedangBunyi) break; // skip kalau masih bunyi
     const selisih=Math.abs(n-ev.menit);
     if(selisih<=1 && !belDimainkan[tgl+'-'+ev.id]){
       belDimainkan[tgl+'-'+ev.id]=true;
@@ -532,8 +543,9 @@ function cekBelOtomatis(){
       bunyikanBel(ev.suara);
       // Kirim trigger ke sheet
       fetch(CFG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'triggerBel',suara:ev.suara,guruPiket:'AUTO'})}).catch(()=>{});
+      break; // hanya 1 event per cek
     }
-  });
+  }
 }
 // Reset belDimainkan setiap hari baru
 setInterval(()=>{
